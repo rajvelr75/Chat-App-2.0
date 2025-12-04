@@ -1,0 +1,120 @@
+import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import {
+  getChatDetails,
+  sendMessage,
+  getMessages,
+  getUserProfile,
+  clearChat,
+  deleteMessage
+} from '../services/chatService';
+
+import ChatHeader from './ChatHeader';
+import MessageBubble from './MessageBubble';
+import MessageInput from './MessageInput';
+
+const ChatWindow = () => {
+  const { chatId } = useParams();
+  const { currentUser } = useAuth();
+  const [chat, setChat] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [otherUser, setOtherUser] = useState(null);
+  const [groupMembers, setGroupMembers] = useState({});
+  const [loading, setLoading] = useState(true);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    const fetchChatData = async () => {
+      setLoading(true);
+      const chatData = await getChatDetails(chatId);
+      setChat(chatData);
+
+      if (chatData) {
+        if (chatData.isGroup) {
+          // Fetch all members for group chat
+          const membersData = {};
+          for (const uid of chatData.members) {
+            const user = await getUserProfile(uid);
+            membersData[uid] = user;
+          }
+          setGroupMembers(membersData);
+        } else {
+          // Fetch other user for 1-on-1
+          const otherUserId = chatData.members.find(id => id !== currentUser.uid);
+          if (otherUserId) {
+            const user = await getUserProfile(otherUserId);
+            setOtherUser(user);
+          }
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchChatData();
+
+    const unsubscribe = getMessages(chatId, currentUser.uid, (msgs) => {
+      setMessages(msgs);
+    });
+
+    return () => unsubscribe();
+  }, [chatId, currentUser.uid]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+
+
+  const handleClearChat = async () => {
+    if (window.confirm("Are you sure you want to clear this chat?")) {
+      await clearChat(chatId);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if (window.confirm("Delete this message?")) {
+      await deleteMessage(chatId, messageId);
+    }
+  };
+
+  if (loading) return <div className="flex-1 flex items-center justify-center bg-chat-bg text-gray-400">Loading...</div>;
+  if (!chat) return <div className="flex-1 flex items-center justify-center bg-chat-bg text-gray-400">Chat not found</div>;
+
+  return (
+    <div className="flex flex-col h-full bg-chat-bg">
+      <ChatHeader
+        chat={chat}
+        otherUser={otherUser}
+        onClearChat={handleClearChat}
+      />
+
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        {messages.map((msg) => {
+          const sender = chat.isGroup ? groupMembers[msg.senderId] : otherUser;
+          return (
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              isGroup={chat.isGroup}
+              sender={msg.senderId === currentUser.uid ? currentUser : sender}
+              onDelete={handleDeleteMessage}
+              chatId={chatId}
+            />
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <MessageInput
+        chatId={chatId}
+        onSendMessage={async (text, attachment) => {
+          await sendMessage(chatId, currentUser.uid, text, attachment);
+        }}
+      />
+    </div>
+  );
+};
+
+
+export default ChatWindow;

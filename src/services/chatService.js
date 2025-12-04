@@ -1,0 +1,475 @@
+import {
+    collection,
+    addDoc,
+    query,
+    where,
+    getDocs,
+    serverTimestamp,
+    onSnapshot,
+    orderBy,
+    doc,
+    updateDoc,
+    getDoc,
+    setDoc,
+    deleteDoc,
+    writeBatch,
+    arrayUnion,
+    arrayRemove
+} from "firebase/firestore";
+import { db } from "./firebase";
+import { generateChatKey, encryptMessage, decryptMessage, wrapKeyForUser, unwrapKeyForUser } from "./cryptoService";
+
+// --- Chat Management ---
+
+export const createChat = async (currentUserId, otherUserId) => {
+    const combinedId = currentUserId > otherUserId
+        ? currentUserId + "_" + otherUserId
+        : otherUserId + "_" + currentUserId;
+
+    try {
+        const res = await getDoc(doc(db, "chats", combinedId));
+
+        if (!res.exists()) {
+            // 1. Generate Chat Key
+            const chatKey = await generateChatKey();
+
+            // 2. Encrypt Chat Key for both users
+            const encryptedForCurrentUser = await wrapKeyForUser(chatKey, currentUserId);
+            const encryptedForOtherUser = await wrapKeyForUser(chatKey, otherUserId);
+
+            // 3. Create Chat Doc
+            await setDoc(doc(db, "chats", combinedId), {
+                members: [currentUserId, otherUserId],
+                createdAt: serverTimestamp(),
+                isGroup: false,
+                lastMessage: null,
+                lastMessageAt: serverTimestamp(),
+            });
+
+            // 4. Store Encrypted Keys
+            await setDoc(doc(db, "chats", combinedId, "keys", currentUserId), encryptedForCurrentUser);
+            await setDoc(doc(db, "chats", combinedId, "keys", otherUserId), encryptedForOtherUser);
+        }
+        return combinedId;
+    } catch (err) {
+        throw err;
+    }
+};
+
+export const createChatWithEmail = async (currentUser, email) => {
+    // 1. Find user by email
+    const q = query(collection(db, "users"), where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        throw new Error("User not found");
+    }
+
+    const otherUser = querySnapshot.docs[0].data();
+    if (otherUser.uid === currentUser.uid) {
+        throw new Error("You cannot chat with yourself");
+    }
+
+    // 2. Create chat
+    return await createChat(currentUser.uid, otherUser.uid);
+};
+
+export const createGroupChat = async (currentUser, groupName, memberEmails) => {
+    // 1. Resolve emails to UIDs
+    const memberIds = [currentUser.uid];
+
+    for (const email of memberEmails) {
+        const q = query(collection(db, "users"), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            memberIds.push(querySnapshot.docs[0].data().uid);
+        }
+    }
+
+    // Ensure unique members
+    const uniqueMemberIds = [...new Set(memberIds)];
+
+    if (uniqueMemberIds.length < 2) {
+        throw new Error("Group must have at least 2 members");
+    }
+
+    // 2. Generate Group Key
+    const chatKey = await generateChatKey();
+    const chatId = doc(collection(db, "chats")).id;
+
+    // 3. Create Chat Doc
+    await setDoc(doc(db, "chats", chatId), {
+        members: uniqueMemberIds,
+        createdAt: serverTimestamp(),
+        isGroup: true,
+        name: groupName,
+        createdBy: currentUser.uid,
+        admins: [currentUser.uid], // Initialize creator as admin
+        lastMessage: "Group created",
+        lastMessageAt: serverTimestamp(),
+    });
+
+    // 4. Store Encrypted Keys for ALL members
+    for (const uid of uniqueMemberIds) {
+        const encryptedKey = await wrapKeyForUser(chatKey, uid);
+        await setDoc(doc(db, "chats", chatId, "keys", uid), encryptedKey);
+    }
+
+    return chatId;
+};
+
+export const getUserChats = (userId, callback) => {
+    const q = query(
+        collection(db, "chats"),
+        where("members", "array-contains", userId),
+        orderBy("lastMessageAt", "desc")
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const chats = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        callback(chats);
+    });
+};
+
+export const getChatDetails = async (chatId) => {
+    const docRef = doc(db, "chats", chatId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+    } else {
+        return null;
+    }
+};
+
+export const clearChat = async (chatId) => {
+    const messagesRef = collection(db, "chats", chatId, "messages");
+    const snapshot = await getDocs(messagesRef);
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+
+    await updateDoc(doc(db, "chats", chatId), {
+        lastMessage: "",
+        lastMessageAt: serverTimestamp()
+    });
+};
+
+// --- Key Management ---
+
+let chatKeyCache = {};
+
+const getChatKey = async (chatId, userId) => {
+    if (chatKeyCache[chatId]) return chatKeyCache[chatId];
+
+    try {
+        const keyDoc = await getDoc(doc(db, "chats", chatId, "keys", userId));
+        if (keyDoc.exists()) {
+            const encryptedKeyData = keyDoc.data();
+            const key = await unwrapKeyForUser(encryptedKeyData, userId);
+            chatKeyCache[chatId] = key;
+            return key;
+        }
+    } catch (e) {
+        console.error("Error fetching chat key:", e);
+    }
+    return null;
+};
+
+// --- Message Management ---
+
+export const sendMessage = async (chatId, senderId, text, attachment = null) => {
+    try {
+        let encryptedData = { ciphertext: null, iv: null };
+
+        if (text) {
+            const key = await getChatKey(chatId, senderId);
+            if (key) {
+                encryptedData = await encryptMessage(text, key);
+            } else {
+                console.error("No key found for chat, sending plaintext (fallback)");
+            }
+        }
+
+        const messageData = {
+            senderId,
+            text: null, // Don't store plaintext
+            ciphertext: encryptedData.ciphertext,
+            iv: encryptedData.iv,
+            createdAt: serverTimestamp(),
+            status: "sent"
+        };
+
+        if (attachment) {
+            if (attachment.type === 'image') {
+                messageData.imageUrl = attachment.url;
+            } else if (attachment.type === 'video') {
+                messageData.videoUrl = attachment.url;
+            }
+        }
+
+        // Add message to subcollection
+        await addDoc(collection(db, "chats", chatId, "messages"), messageData);
+
+        // Update last message in chat doc
+        let lastMsgText = "Message";
+        if (text) lastMsgText = text;
+        else if (attachment?.type === 'image') lastMsgText = "📷 Photo";
+        else if (attachment?.type === 'video') lastMsgText = "🎥 Video";
+
+        await updateDoc(doc(db, "chats", chatId), {
+            lastMessage: lastMsgText,
+            lastMessageAt: serverTimestamp()
+        });
+    } catch (err) {
+        throw err;
+    }
+};
+
+export const getMessages = (chatId, userId, callback) => {
+    const q = query(
+        collection(db, "chats", chatId, "messages"),
+        orderBy("createdAt", "asc")
+    );
+
+    return onSnapshot(q, async (snapshot) => {
+        const key = await getChatKey(chatId, userId);
+
+        const messages = await Promise.all(snapshot.docs.map(async (doc) => {
+            const data = doc.data();
+            let text = data.text;
+
+            if (data.ciphertext && data.iv && key) {
+                text = await decryptMessage(data.ciphertext, data.iv, key);
+            } else if (!text && data.ciphertext) {
+                text = "🔒 Encrypted message";
+            }
+
+            return {
+                id: doc.id,
+                ...data,
+                text
+            };
+        }));
+
+        callback(messages);
+    });
+};
+
+export const deleteMessage = async (chatId, messageId) => {
+    await deleteDoc(doc(db, "chats", chatId, "messages", messageId));
+    // Note: Updating lastMessage if the deleted message was the last one is complex 
+    // and omitted for brevity, but ideally should be handled.
+};
+
+// --- Group Admin Functions ---
+
+export const updateGroupName = async (chatId, newName) => {
+    await updateDoc(doc(db, "chats", chatId), {
+        name: newName
+    });
+};
+
+export const updateGroupPhoto = async (chatId, photoURL) => {
+    await updateDoc(doc(db, "chats", chatId), {
+        photoURL: photoURL
+    });
+};
+
+export const makeAdmin = async (chatId, userId) => {
+    await updateDoc(doc(db, "chats", chatId), {
+        admins: arrayUnion(userId)
+    });
+};
+
+export const addParticipant = async (chatId, newUserId, currentUserId) => {
+    // 1. Get the current chat key (as the admin/adder)
+    const chatKey = await getChatKey(chatId, currentUserId);
+    if (!chatKey) {
+        throw new Error("Could not retrieve chat key to add new member");
+    }
+
+    // 2. Wrap the key for the new user
+    const encryptedForNewUser = await wrapKeyForUser(chatKey, newUserId);
+
+    // 3. Add member and store key atomically (or close to it)
+    const batch = writeBatch(db);
+
+    // Add to members list
+    const chatRef = doc(db, "chats", chatId);
+    batch.update(chatRef, {
+        members: arrayUnion(newUserId)
+    });
+
+    // Store the key
+    const keyRef = doc(db, "chats", chatId, "keys", newUserId);
+    batch.set(keyRef, encryptedForNewUser);
+
+    await batch.commit();
+};
+
+export const removeParticipant = async (chatId, userId) => {
+    const batch = writeBatch(db);
+
+    // Remove from members and admins
+    const chatRef = doc(db, "chats", chatId);
+    batch.update(chatRef, {
+        members: arrayRemove(userId),
+        admins: arrayRemove(userId)
+    });
+
+    // Delete the key document
+    const keyRef = doc(db, "chats", chatId, "keys", userId);
+    batch.delete(keyRef);
+
+    await batch.commit();
+};
+
+export const checkAdmin = (chat, userId) => {
+    if (!chat?.isGroup) return false;
+    // Legacy support: if no admins array, creator is admin
+    if (!chat.admins) {
+        return chat.createdBy === userId;
+    }
+    return chat.admins.includes(userId);
+};
+
+// --- User Search & Profile ---
+
+export const searchUsers = async (searchTerm) => {
+    const q = query(collection(db, "users"), orderBy("displayName"), where("displayName", ">=", searchTerm), where("displayName", "<=", searchTerm + '\uf8ff'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data());
+};
+
+export const getUserProfile = async (userId) => {
+    const docRef = doc(db, "users", userId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data();
+    }
+    return null;
+};
+
+export const updateUserProfile = async (userId, data) => {
+    const docRef = doc(db, "users", userId);
+    await updateDoc(docRef, data);
+};
+
+// --- Encrypted Media Storage ---
+
+export const uploadEncryptedChunks = async (messageId, chunks, onProgress) => {
+    const totalChunks = chunks.length;
+    let uploadedChunks = 0;
+
+    // Upload chunks in parallel (limit concurrency if needed, but for now simple Promise.all)
+    // For very large files, we might want to batch this.
+    const uploadPromises = chunks.map(async (chunk) => {
+        const chunkRef = doc(db, "mediaChunks", messageId, "chunks", chunk.index.toString());
+        await setDoc(chunkRef, {
+            index: chunk.index,
+            data: chunk.data
+        });
+        uploadedChunks++;
+        if (onProgress) {
+            onProgress((uploadedChunks / totalChunks) * 100);
+        }
+    });
+
+    await Promise.all(uploadPromises);
+};
+
+export const downloadChunks = async (messageId) => {
+    const chunksRef = collection(db, "mediaChunks", messageId, "chunks");
+    const q = query(chunksRef, orderBy("index"));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => doc.data());
+};
+
+export const sendMediaMessage = async (chatId, senderId, metadata) => {
+    const messageData = {
+        senderId,
+        type: metadata.type, // 'image' or 'video'
+        encrypted: true,
+        mimeType: metadata.mimeType,
+        iv: metadata.iv,
+        chunkCount: metadata.chunkCount,
+        createdAt: serverTimestamp(),
+        status: "sent"
+    };
+
+    if (metadata.thumbnailAvailable) {
+        messageData.thumbnailAvailable = true;
+        messageData.thumbnailChunkCount = metadata.thumbnailChunkCount;
+        messageData.thumbnailIv = metadata.thumbnailIv;
+    }
+
+    // Add message to subcollection
+    // We use setDoc with a specific ID if provided, but here we assume messageId was pre-generated
+    // If metadata.messageId is provided, use it.
+
+    const messageRef = doc(db, "chats", chatId, "messages", metadata.messageId);
+    await setDoc(messageRef, messageData);
+
+    // Update last message in chat doc
+    const lastMsgText = metadata.type === 'image' ? "📷 Photo" : "🎥 Video";
+    await updateDoc(doc(db, "chats", chatId), {
+        lastMessage: lastMsgText,
+        lastMessageAt: serverTimestamp()
+    });
+};
+
+export const uploadPublicChunks = async (fileId, file) => {
+    const buffer = await file.arrayBuffer();
+    const chunks = [];
+    const chunkSize = 512 * 1024;
+    const uint8Array = new Uint8Array(buffer);
+
+    for (let i = 0; i < buffer.byteLength; i += chunkSize) {
+        const chunkBytes = uint8Array.subarray(i, Math.min(i + chunkSize, buffer.byteLength));
+        let binary = '';
+        for (let j = 0; j < chunkBytes.byteLength; j++) binary += String.fromCharCode(chunkBytes[j]);
+        chunks.push({ index: chunks.length, data: window.btoa(binary) });
+    }
+
+    const uploadPromises = chunks.map(async (chunk) => {
+        await setDoc(doc(db, "publicMedia", fileId, "chunks", chunk.index.toString()), {
+            index: chunk.index,
+            data: chunk.data
+        });
+    });
+
+    await Promise.all(uploadPromises);
+    return `firestore://${fileId}`;
+};
+
+export const downloadPublicChunks = async (fileId) => {
+    const q = query(collection(db, "publicMedia", fileId, "chunks"), orderBy("index"));
+    const snapshot = await getDocs(q);
+    const chunks = snapshot.docs.map(doc => doc.data());
+
+    let totalSize = 0;
+    const decodedChunks = chunks.map(chunk => {
+        const binary = window.atob(chunk.data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        totalSize += bytes.length;
+        return bytes;
+    });
+
+    const combined = new Uint8Array(totalSize);
+    let offset = 0;
+    for (const chunk of decodedChunks) {
+        combined.set(chunk, offset);
+        offset += chunk.length;
+    }
+
+    return combined.buffer;
+};

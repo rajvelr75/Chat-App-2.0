@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+:root {
+  /* Core Colors */
+  /* Core Colors */
+  --bg-color: #0e0f14;
+  --glass-surface: rgba(30, 30, 30, 0.6);
+  /* Darker, more opaque for better contrast */
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: 20px;
+  --accent-color: #00a884;
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+
+  /* Message Bubbles - Dark Mode optimized */
+  --message-out: #005c4b;
+  --message-in: #202c33;
+  --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* App handles scrolling */
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--glass-surface);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  backdrop-filter: blur(10px);
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.glass-button {
+  background: var(--accent-color);
+  color: #fff;
+  transition: all 0.2s;
+  border: none;
+}
+
+.glass-button:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 15px rgba(0, 168, 132, 0.3);
+}
+
+/* Utility Classes for Compatibility */
+.bg-app-bg {
+  background-color: var(--bg-color);
+}
+
+.bg-sidebar-bg {
+  background-color: var(--glass-surface);
+  border-right: 1px solid var(--glass-border);
+}
+
+.bg-chat-bg {
+  background-color: #0b141a;
+  background-image: linear-gradient(rgba(11, 20, 26, 0.9), rgba(11, 20, 26, 0.9)), url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
+  background-repeat: repeat;
+  background-size: 400px;
+}
+
+.text-text-primary {
+  color: var(--text-primary);
+}
+
+.text-text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-accent {
+  color: var(--accent-color);
+}
+
+.border-glass {
+  border-color: var(--glass-border);
+}
+
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* Override default borders if needed */
+.border-gray-700 {
+  border-color: var(--glass-border) !important;
+}
+
+/* Message Bubbles */
+.message-in {
+  background-color: var(--message-in);
+}
+
+.message-out {
+  background-color: var(--message-out);
+}
+
+/* Force pointer cursor on interactive elements */
+button,
+a,
+[role="button"],
+.cursor-pointer,
+input[type="file"]+label,
+.clickable {
+  cursor: pointer !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
