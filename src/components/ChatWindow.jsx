@@ -14,6 +14,9 @@ import ChatHeader from './ChatHeader';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 
+import GroupDetailsPage from '../pages/GroupDetailsPage';
+import UserDetailsPage from '../pages/UserDetailsPage';
+
 const ChatWindow = () => {
   const { chatId } = useParams();
   const { currentUser } = useAuth();
@@ -22,6 +25,8 @@ const ChatWindow = () => {
   const [otherUser, setOtherUser] = useState(null);
   const [groupMembers, setGroupMembers] = useState({});
   const [loading, setLoading] = useState(true);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showUserInfo, setShowUserInfo] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -29,6 +34,8 @@ const ChatWindow = () => {
       setLoading(true);
       const chatData = await getChatDetails(chatId);
       setChat(chatData);
+      setShowGroupInfo(false); // Reset when chat changes
+      setShowUserInfo(false);
 
       if (chatData) {
         if (chatData.isGroup) {
@@ -82,11 +89,19 @@ const ChatWindow = () => {
   if (!chat) return <div className="flex-1 flex items-center justify-center bg-chat-bg text-gray-400">Chat not found</div>;
 
   return (
-    <div className="flex flex-col h-full bg-chat-bg">
+    <div className="flex flex-col h-full bg-transparent relative">
       <ChatHeader
         chat={chat}
         otherUser={otherUser}
         onClearChat={handleClearChat}
+        onGroupInfoClick={() => {
+          setShowGroupInfo(true);
+          setShowUserInfo(false);
+        }}
+        onUserInfoClick={() => {
+          setShowUserInfo(true);
+          setShowGroupInfo(false);
+        }}
       />
 
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
@@ -112,6 +127,26 @@ const ChatWindow = () => {
           await sendMessage(chatId, currentUser.uid, text, attachment);
         }}
       />
+
+      {/* Group Info Drawer */}
+      {showGroupInfo && (
+        <div className="absolute top-0 right-0 h-full z-30 shadow-2xl animate-fade-in-left">
+          <GroupDetailsPage
+            chatId={chatId}
+            onClose={() => setShowGroupInfo(false)}
+          />
+        </div>
+      )}
+
+      {/* User Info Drawer */}
+      {showUserInfo && otherUser && (
+        <div className="absolute top-0 right-0 h-full z-30 shadow-2xl animate-fade-in-left">
+          <UserDetailsPage
+            uid={otherUser.uid}
+            onClose={() => setShowUserInfo(false)}
+          />
+        </div>
+      )}
     </div>
   );
 };

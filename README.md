@@ -1,6 +1,6 @@
-# WhatsApp Clone
+# Chat App
 
-A fully functional, responsive WhatsApp-style chat application built with React, Tailwind CSS, and Firebase.
+A fully functional, responsive Chat Application built with React, Tailwind CSS, and Firebase.
 
 ## Features
 

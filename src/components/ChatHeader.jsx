@@ -5,7 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Avatar from './Avatar';
 
-const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat }) => {
+const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat, onGroupInfoClick, onUserInfoClick }) => {
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
     const [otherUser, setOtherUser] = useState(initialOtherUser);
@@ -46,9 +46,17 @@ const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat }) => {
 
     const handleProfileClick = () => {
         if (isGroup) {
-            navigate(`/group/${chat.id}`);
+            if (onGroupInfoClick) {
+                onGroupInfoClick();
+            } else {
+                navigate(`/group/${chat.id}`);
+            }
         } else if (otherUser) {
-            navigate(`/user/${otherUser.uid}`);
+            if (onUserInfoClick) {
+                onUserInfoClick();
+            } else {
+                navigate(`/user/${otherUser.uid}`);
+            }
         }
     };
 

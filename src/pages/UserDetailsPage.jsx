@@ -5,8 +5,10 @@ import { db } from '../services/firebase';
 import { MdArrowBack, MdEmail, MdAccessTime } from 'react-icons/md';
 import Avatar from '../components/Avatar';
 
-const UserDetailsPage = () => {
-    const { uid } = useParams();
+const UserDetailsPage = ({ uid: propUid, onClose }) => {
+    const { uid: paramUid } = useParams();
+    const uid = propUid || paramUid;
+
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -31,10 +33,13 @@ const UserDetailsPage = () => {
         : (user.lastSeen ? `Last seen: ${user.lastSeen.toDate().toLocaleString()}` : 'Offline');
 
     return (
-        <div className="flex flex-col h-full bg-app-bg">
+        <div className="flex flex-col h-full bg-app-bg border-l border-glass w-full md:w-[400px]">
             {/* Header */}
             <div className="h-16 glass-panel flex items-center px-4 border-b border-glass">
-                <button onClick={() => navigate(-1)} className="mr-4 text-text-secondary hover:text-text-primary transition-colors">
+                <button
+                    onClick={() => onClose ? onClose() : navigate(-1)}
+                    className="mr-4 text-text-secondary hover:text-text-primary transition-colors"
+                >
                     <MdArrowBack className="w-6 h-6" />
                 </button>
                 <h1 className="text-xl font-medium text-text-primary">Contact Info</h1>

@@ -17,14 +17,20 @@ const ChatLayout = () => {
     // We use Tailwind classes to toggle visibility.
 
     return (
-        <div className="flex h-screen bg-app-bg overflow-hidden">
+        <div className="flex h-screen bg-app-bg overflow-hidden relative">
+            {/* Global Background Gradient/Blur Effect */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-accent/20 rounded-full blur-[100px]" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 rounded-full blur-[100px]" />
+            </div>
+
             {/* Sidebar: Hidden on mobile if chat/profile is active, always visible on md+ */}
-            <div className={`w-full md:w-[400px] md:flex flex-col border-r border-gray-700 bg-sidebar-bg ${isSidebarHidden ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`w-full md:w-[400px] md:flex flex-col border-r border-gray-700 bg-sidebar-bg/80 backdrop-blur-md z-10 ${isSidebarHidden ? 'hidden md:flex' : 'flex'}`}>
                 <Sidebar />
             </div>
 
             {/* Main Chat Area: Hidden on mobile if NO chat/profile is active, always visible on md+ */}
-            <div className={`flex-1 flex flex-col bg-chat-bg ${!isSidebarHidden ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`flex-1 flex flex-col bg-chat-bg/50 backdrop-blur-sm z-10 ${!isSidebarHidden ? 'hidden md:flex' : 'flex'}`}>
                 <Routes>
                     <Route path="/" element={
                         <div className="h-full flex flex-col items-center justify-center text-gray-400 border-b-8 border-accent">

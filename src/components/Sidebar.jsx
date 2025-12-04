@@ -69,7 +69,7 @@ const Sidebar = () => {
   const displayUser = userProfile ? { ...currentUser, ...userProfile } : currentUser;
 
   return (
-    <div className="flex flex-col h-full glass-panel border-r border-glass">
+    <div className="flex flex-col h-full border-r border-glass bg-transparent">
       {/* Header */}
       <div className="h-16 flex items-center justify-between px-4 py-2 border-b border-glass">
         <div
