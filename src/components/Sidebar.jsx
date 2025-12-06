@@ -69,30 +69,30 @@ const Sidebar = () => {
   const displayUser = userProfile ? { ...currentUser, ...userProfile } : currentUser;
 
   return (
-    <div className="flex flex-col h-full border-r border-glass bg-transparent">
+    <div className="flex flex-col h-full bg-sidebar-bg border-r border-gray-200 shadow-xl overflow-hidden">
       {/* Header */}
-      <div className="h-16 flex items-center justify-between px-4 py-2 border-b border-glass">
+      <div className="h-16 flex items-center justify-between px-4 bg-header-bg shadow-sm z-20">
         <div
-          className="cursor-pointer hover:opacity-80 transition-opacity"
+          className="cursor-pointer hover:opacity-90 transition-opacity ring-2 ring-transparent hover:ring-white/20 rounded-full p-0.5"
           onClick={() => navigate('/profile')}
           title="My Profile"
         >
           <Avatar user={displayUser} size="w-10 h-10" />
         </div>
 
-        <div className="flex items-center gap-4 text-text-secondary">
-          <button title="New Chat" onClick={() => setShowNewChatModal(true)} className="hover:text-accent transition-colors"><MdChat className="w-6 h-6" /></button>
+        <div className="flex items-center gap-4 text-white/90">
+          <button title="New Chat" onClick={() => setShowNewChatModal(true)} className="hover:text-white hover:bg-white/10 p-2 rounded-full transition-all duration-200"><MdChat className="w-6 h-6" /></button>
           <div className="relative">
-            <button onClick={() => setShowMenu(!showMenu)} title="Menu" className="hover:text-accent transition-colors"><MdMoreVert className="w-6 h-6" /></button>
+            <button onClick={() => setShowMenu(!showMenu)} title="Menu" className="hover:text-white hover:bg-white/10 p-2 rounded-full transition-all duration-200"><MdMoreVert className="w-6 h-6" /></button>
             {showMenu && (
-              <div className="absolute right-0 top-8 glass-panel shadow-lg rounded py-2 w-48 z-10">
+              <div className="absolute right-0 top-10 bg-white shadow-xl rounded-lg py-2 w-48 z-20 border border-gray-100 transform origin-top-right transition-all">
                 <button
                   onClick={() => { setShowNewGroupModal(true); setShowMenu(false); }}
-                  className="w-full text-left px-4 py-2 hover:bg-glass text-text-primary flex items-center gap-2"
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 text-gray-700 flex items-center gap-3 transition-colors font-medium text-sm"
                 >
-                  <MdGroupAdd className="w-5 h-5" /> New group
+                  <MdGroupAdd className="w-5 h-5 text-[#0C4DA2]" /> New group
                 </button>
-                <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-glass text-text-primary">Log out</button>
+                <button onClick={handleLogout} className="w-full text-left px-4 py-3 hover:bg-red-50 text-red-500 font-medium text-sm transition-colors">Log out</button>
               </div>
             )}
           </div>
@@ -100,18 +100,18 @@ const Sidebar = () => {
       </div>
 
       {/* Search */}
-      <div className="p-2 border-b border-glass">
-        <div className="glass-input flex items-center rounded-lg px-2 py-1.5">
+      <div className="p-3 bg-white border-b border-gray-100 z-10">
+        <div className={`flex items-center rounded-lg px-3 py-2 transition-all duration-200 bg-[#F0F2F5] focus-within:bg-white focus-within:ring-1 focus-within:ring-[#0C4DA2] focus-within:shadow-sm`}>
           {isSearching || searchTerm ? (
-            <MdArrowBack className="w-5 h-5 text-accent ml-2 cursor-pointer" onClick={() => { setSearchTerm(''); setIsSearching(false); }} />
+            <MdArrowBack className="w-5 h-5 text-[#0C4DA2] mr-3 cursor-pointer" onClick={() => { setSearchTerm(''); setIsSearching(false); }} />
           ) : (
-            <MdSearch className="w-5 h-5 text-text-secondary ml-2" />
+            <MdSearch className="w-5 h-5 text-gray-500 mr-3" />
           )}
           <input
             id="search-input"
             type="text"
             placeholder="Search or start new chat"
-            className="bg-transparent border-none focus:ring-0 text-text-primary placeholder-text-secondary text-sm w-full ml-4 focus:outline-none"
+            className="bg-transparent border-none focus:ring-0 text-sm w-full focus:outline-none text-gray-700 placeholder-gray-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -119,20 +119,21 @@ const Sidebar = () => {
       </div>
 
       {/* Chat List or Search Results */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
         {isSearching || searchTerm ? (
-          <div>
+          <div className="py-2">
             {searchResults.length === 0 ? (
-              <div className="p-4 text-center text-text-secondary text-sm">No users found</div>
+              <div className="p-8 text-center text-gray-400 text-sm">No users found</div>
             ) : (
               searchResults.map(user => (
-                <div key={user.uid} onClick={() => handleUserSelect(user)} className="flex items-center p-3 hover:bg-glass cursor-pointer border-b border-glass">
-                  <div className="mr-3">
+                <div key={user.uid} onClick={() => handleUserSelect(user)} className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0">
+                  <div className="mr-4 relative">
                     <Avatar user={user} size="w-12 h-12" />
+                    <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-text-primary font-medium truncate">{user.displayName}</h3>
-                    <p className="text-text-secondary text-sm truncate">{user.about || 'Available'}</p>
+                    <h3 className="text-gray-900 font-medium truncate text-base">{user.displayName}</h3>
+                    <p className="text-gray-500 text-sm truncate">{user.about || 'Available'}</p>
                   </div>
                 </div>
               ))

@@ -81,27 +81,27 @@ const ProfilePage = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-app-bg">
+        <div className="flex flex-col h-full bg-chat-bg">
             {/* Header */}
-            <div className="h-16 glass-panel flex items-center px-4 border-b border-glass">
-                <button onClick={() => navigate('/')} className="mr-4 text-text-secondary md:hidden">
+            <div className="h-16 bg-header-bg flex items-center px-4 border-b border-glass shadow-md z-10">
+                <button onClick={() => navigate('/')} className="mr-4 text-white/80 hover:text-white md:hidden">
                     <MdArrowBack className="w-6 h-6" />
                 </button>
-                <h1 className="text-xl font-medium text-text-primary">Profile</h1>
+                <h1 className="text-xl font-medium text-white">Profile</h1>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                <div className="max-w-2xl mx-auto space-y-8 glass-panel p-8 rounded-2xl">
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar relative z-0">
+                <div className="max-w-2xl mx-auto space-y-8 glass-panel p-8 rounded-2xl bg-white/80 backdrop-blur-xl shadow-xl border border-white/50">
                     {/* Photo */}
                     <div className="flex justify-center">
                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                             <Avatar
                                 user={currentUser}
                                 size="w-40 h-40"
-                                className="border-4 border-glass shadow-glass text-4xl"
+                                className="border-4 border-white shadow-lg text-4xl"
                             />
 
-                            <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                                 <MdCameraAlt className="w-8 h-8 text-white" />
                                 <span className="text-white text-sm mt-8 absolute font-medium">CHANGE PHOTO</span>
                             </div>
@@ -112,13 +112,13 @@ const ProfilePage = () => {
                                 accept="image/*"
                                 onChange={handleFileSelect}
                             />
-                            {loading && <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full text-white font-medium">Loading...</div>}
+                            {loading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full text-white font-medium">Loading...</div>}
                         </div>
                     </div>
 
                     {/* Name */}
                     <div className="space-y-2">
-                        <label className="text-accent text-sm font-medium uppercase tracking-wider">Your Name</label>
+                        <label className="text-[#0C4DA2] text-sm font-bold uppercase tracking-wider">Your Name</label>
                         <div className="flex items-center justify-between group">
                             {editingName ? (
                                 <div className="flex-1 flex items-center gap-2">
@@ -126,24 +126,24 @@ const ProfilePage = () => {
                                         type="text"
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        className="flex-1 glass-input rounded px-2 py-1 text-text-primary focus:ring-1 focus:ring-accent"
+                                        className="flex-1 bg-white border border-[#E0E8F2] rounded px-3 py-2 text-[#313131] focus:ring-2 focus:ring-[#0C4DA2] focus:border-transparent outline-none transition-all"
                                         autoFocus
                                     />
-                                    <button onClick={() => handleSave('displayName', name)} className="text-accent hover:text-white"><MdCheck className="w-6 h-6" /></button>
+                                    <button onClick={() => handleSave('displayName', name)} className="text-[#0C4DA2] hover:text-[#093d80]"><MdCheck className="w-6 h-6" /></button>
                                 </div>
                             ) : (
-                                <div className="flex-1 flex items-center justify-between py-1 border-b border-transparent hover:border-glass transition-colors">
-                                    <span className="text-text-primary text-lg">{name}</span>
-                                    <button onClick={() => setEditingName(true)} className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-accent transition-all"><MdEdit className="w-5 h-5" /></button>
+                                <div className="flex-1 flex items-center justify-between py-2 border-b border-gray-200 hover:border-[#0C4DA2] transition-colors">
+                                    <span className="text-[#313131] text-lg font-medium">{name}</span>
+                                    <button onClick={() => setEditingName(true)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-[#0C4DA2] transition-all"><MdEdit className="w-5 h-5" /></button>
                                 </div>
                             )}
                         </div>
-                        <p className="text-text-secondary text-sm">This is not your username or pin. This name will be visible to your WhatsApp contacts.</p>
+                        <p className="text-gray-500 text-sm">This is not your username or pin. This name will be visible to your WhatsApp contacts.</p>
                     </div>
 
                     {/* About */}
                     <div className="space-y-2">
-                        <label className="text-accent text-sm font-medium uppercase tracking-wider">About</label>
+                        <label className="text-[#0C4DA2] text-sm font-bold uppercase tracking-wider">About</label>
                         <div className="flex items-center justify-between group">
                             {editingAbout ? (
                                 <div className="flex-1 flex items-center gap-2">
@@ -151,15 +151,15 @@ const ProfilePage = () => {
                                         type="text"
                                         value={about}
                                         onChange={(e) => setAbout(e.target.value)}
-                                        className="flex-1 glass-input rounded px-2 py-1 text-text-primary focus:ring-1 focus:ring-accent"
+                                        className="flex-1 bg-white border border-[#E0E8F2] rounded px-3 py-2 text-[#313131] focus:ring-2 focus:ring-[#0C4DA2] focus:border-transparent outline-none transition-all"
                                         autoFocus
                                     />
-                                    <button onClick={() => handleSave('about', about)} className="text-accent hover:text-white"><MdCheck className="w-6 h-6" /></button>
+                                    <button onClick={() => handleSave('about', about)} className="text-[#0C4DA2] hover:text-[#093d80]"><MdCheck className="w-6 h-6" /></button>
                                 </div>
                             ) : (
-                                <div className="flex-1 flex items-center justify-between py-1 border-b border-transparent hover:border-glass transition-colors">
-                                    <span className="text-text-primary text-lg">{about || 'Available'}</span>
-                                    <button onClick={() => setEditingAbout(true)} className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-accent transition-all"><MdEdit className="w-5 h-5" /></button>
+                                <div className="flex-1 flex items-center justify-between py-2 border-b border-gray-200 hover:border-[#0C4DA2] transition-colors">
+                                    <span className="text-[#313131] text-lg">{about || 'Available'}</span>
+                                    <button onClick={() => setEditingAbout(true)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-[#0C4DA2] transition-all"><MdEdit className="w-5 h-5" /></button>
                                 </div>
                             )}
                         </div>
@@ -167,8 +167,8 @@ const ProfilePage = () => {
 
                     {/* Email (Read-only) */}
                     <div className="space-y-2">
-                        <label className="text-accent text-sm font-medium uppercase tracking-wider">Email</label>
-                        <div className="text-text-secondary text-lg px-2">{currentUser?.email}</div>
+                        <label className="text-[#0C4DA2] text-sm font-bold uppercase tracking-wider">Email</label>
+                        <div className="text-gray-600 text-lg px-2">{currentUser?.email}</div>
                     </div>
                 </div>
             </div>

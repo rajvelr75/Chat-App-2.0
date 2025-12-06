@@ -1,21 +1,44 @@
 @import "tailwindcss";
 
 :root {
-  /* Core Colors */
-  /* Core Colors */
-  --bg-color: #0e0f14;
-  --glass-surface: rgba(30, 30, 30, 0.6);
-  /* Darker, more opaque for better contrast */
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-blur: 20px;
-  --accent-color: #00a884;
-  --text-primary: #e9edef;
-  --text-secondary: #8696a0;
+  /* SRM Theme Palette */
+  --srm-blue: #0C4DA2;
+  --srm-gold: #E4B316;
+  --srm-white: #FFFFFF;
+  --srm-dark-grey: #313131;
+  --srm-light-grey-1: #F6F6F6;
+  --srm-light-grey-2: #E8E8E8;
+  --srm-blue-grey: #E0E8F2;
+  --srm-light-blue: #E6F2FF;
+  --srm-bright-gold: #F9B001;
 
-  /* Message Bubbles - Dark Mode optimized */
-  --message-out: #005c4b;
-  --message-in: #202c33;
-  --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.3);
+  /* Semantic Mapping */
+  --color-app-bg: var(--srm-white);
+  --color-sidebar-bg: var(--srm-light-grey-1);
+  --color-chat-bg: var(--srm-blue-grey);
+  --color-header-bg: var(--srm-blue);
+  --color-message-out: var(--srm-light-blue);
+  --color-message-in: var(--srm-white);
+  --color-accent: var(--srm-gold);
+  --color-text-primary: var(--srm-dark-grey);
+  --color-text-secondary: var(--srm-blue);
+  --color-border: var(--srm-light-grey-2);
+
+  /* Core Compatibility Colors */
+  --bg-color: var(--color-app-bg);
+  --glass-surface: var(--color-sidebar-bg);
+  /* Using sidebar color for panels */
+  --glass-border: var(--color-border);
+  --glass-blur: 0px;
+  /* Solid theme, no blur needed */
+  --accent-color: var(--color-accent);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+
+  /* Message Bubbles */
+  --message-out: var(--color-message-out);
+  --message-in: var(--color-message-in);
+  --shadow-glass: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 html,
@@ -32,7 +55,6 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  /* App handles scrolling */
 }
 
 /* Scrollbar */
@@ -46,75 +68,117 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(12, 77, 162, 0.2);
+  /* SRM Blue with low opacity */
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(12, 77, 162, 0.4);
 }
 
-/* Glassmorphism Utilities */
+/* Panel Utilities (formerly Glassmorphism) */
 .glass-panel {
   background: var(--glass-surface);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-glass);
 }
 
 .glass-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
-  backdrop-filter: blur(10px);
+}
+
+.glass-input::placeholder {
+  color: var(--text-secondary);
 }
 
 .glass-input:focus {
   outline: none;
   border-color: var(--accent-color);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .glass-button {
-  background: var(--accent-color);
+  background: linear-gradient(135deg, var(--srm-gold) 0%, var(--srm-bright-gold) 100%);
   color: #fff;
   transition: all 0.2s;
   border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .glass-button:hover {
   filter: brightness(1.1);
-  box-shadow: 0 0 15px rgba(0, 168, 132, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 8px rgba(228, 179, 22, 0.3);
 }
 
 /* Utility Classes for Compatibility */
 .bg-app-bg {
-  background-color: var(--bg-color);
+  background-color: var(--color-app-bg);
 }
 
 .bg-sidebar-bg {
-  background-color: var(--glass-surface);
-  border-right: 1px solid var(--glass-border);
+  /* Clean White Sidebar */
+  background: #FFFFFF;
+  border-right: 1px solid #E8E8E8;
+
+  /* Retain glass variables for compatibility but map to light theme values */
+  --color-text-primary: #313131;
+  --color-text-secondary: #0C4DA2;
+  --glass-border: #E8E8E8;
+  --glass-surface: #F6F6F6;
+}
+
+.bg-sidebar-bg ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.bg-sidebar-bg ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.bg-sidebar-bg .hover\:bg-glass:hover {
+  background-color: #F5F6F6 !important;
 }
 
 .bg-chat-bg {
-  background-color: #0b141a;
-  background-image: linear-gradient(rgba(11, 20, 26, 0.9), rgba(11, 20, 26, 0.9)), url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
-  background-repeat: repeat;
-  background-size: 400px;
+  /* Light Blue Gradient Chat Area */
+  background: linear-gradient(135deg, #F0F4F8 0%, #FFFFFF 100%);
+  position: relative;
+}
+
+.bg-chat-bg::before {
+  /* Optional geometric pattern or texture can go here if needed */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.4;
+  background-image: radial-gradient(#E0E8F2 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
+.bg-header-bg {
+  /* Matches top of sidebar gradient or distinct header color */
+  background: linear-gradient(90deg, #0C4DA2 0%, #093d80 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .text-text-primary {
-  color: var(--text-primary);
+  color: var(--color-text-primary);
 }
 
 .text-text-secondary {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .text-accent {
-  color: var(--accent-color);
+  color: var(--color-accent);
 }
 
 .border-glass {
@@ -132,11 +196,17 @@ body {
 
 /* Message Bubbles */
 .message-in {
-  background-color: var(--message-in);
+  background-color: #FFFFFF;
+  color: #333333;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-radius: 0 12px 12px 12px;
 }
 
 .message-out {
-  background-color: var(--message-out);
+  background: linear-gradient(135deg, #0C4DA2 0%, #083D85 100%);
+  color: #FFFFFF;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-radius: 12px 0 12px 12px;
 }
 
 /* Force pointer cursor on interactive elements */

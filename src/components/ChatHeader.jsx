@@ -61,9 +61,9 @@ const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat, onGroupInf
     };
 
     return (
-        <div className="h-16 glass-panel flex items-center justify-between px-4 border-b border-glass flex-shrink-0 z-10">
+        <div className="h-16 bg-header-bg flex items-center justify-between px-4 border-b border-glass flex-shrink-0 z-10 text-white">
             <div className="flex items-center">
-                <button onClick={() => navigate('/')} className="mr-2 text-text-secondary md:hidden">
+                <button onClick={() => navigate('/')} className="mr-2 text-white/80 hover:text-white md:hidden">
                     <MdArrowBack className="w-6 h-6" />
                 </button>
 
@@ -76,31 +76,31 @@ const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat, onGroupInf
                     </div>
 
                     <div>
-                        <h2 className="text-text-primary font-medium">{displayName}</h2>
+                        <h2 className="text-white font-medium">{displayName}</h2>
                         <div className="flex items-center">
-                            {status === 'Online' && <div className="w-2 h-2 bg-green-500 rounded-full mr-1.5"></div>}
-                            <p className="text-xs text-text-secondary">{status}</p>
+                            {status === 'Online' && <div className="w-2 h-2 bg-[#E4B316] rounded-full mr-1.5"></div>}
+                            <p className="text-xs text-white/80">{status}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="relative">
-                <button onClick={() => setShowMenu(!showMenu)} className="text-text-secondary hover:text-text-primary">
+                <button onClick={() => setShowMenu(!showMenu)} className="text-white/80 hover:text-white">
                     <MdMoreVert className="w-6 h-6" />
                 </button>
 
                 {showMenu && (
-                    <div className="absolute right-0 top-8 glass-panel shadow-lg rounded py-2 w-48 z-10">
+                    <div className="absolute right-0 top-8 bg-white shadow-lg rounded py-2 w-48 z-10 border border-gray-100">
                         <button
                             onClick={() => { handleProfileClick(); setShowMenu(false); }}
-                            className="w-full text-left px-4 py-2 hover:bg-glass text-text-primary"
+                            className="w-full text-left px-4 py-2 hover:bg-gray-50 text-[var(--srm-dark-grey)]"
                         >
                             {isGroup ? 'Group Info' : 'Contact Info'}
                         </button>
                         <button
                             onClick={() => { onClearChat(); setShowMenu(false); }}
-                            className="w-full text-left px-4 py-2 hover:bg-glass text-red-400 flex items-center gap-2"
+                            className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-400 flex items-center gap-2"
                         >
                             <MdDeleteSweep className="w-5 h-5" /> Clear Chat
                         </button>

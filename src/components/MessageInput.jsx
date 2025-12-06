@@ -123,7 +123,7 @@ const MessageInput = ({ chatId, onSendMessage }) => {
     };
 
     return (
-        <div className="p-3 glass-panel border-t border-glass relative">
+        <div className="p-3 bg-[#F0F4F8] border-t border-[#E8E8E8] relative shadow-inner">
             {/* Pending Upload Bubble (Overlay/Preview) */}
             {uploading && attachment && (
                 <div className="absolute bottom-full left-0 right-0 p-4 bg-transparent pointer-events-none">
@@ -138,7 +138,7 @@ const MessageInput = ({ chatId, onSendMessage }) => {
             {/* Preview Area (Before Send) */}
             {!uploading && previewUrl && (
                 <div className="mb-2 relative inline-block">
-                    <div className="relative rounded-lg overflow-hidden border border-glass max-h-32">
+                    <div className="relative rounded-lg overflow-hidden border border-gray-200 max-h-32 shadow-sm">
                         {attachment.type.startsWith('video/') ? (
                             <video src={previewUrl} className="h-32 w-auto" />
                         ) : (
@@ -158,7 +158,7 @@ const MessageInput = ({ chatId, onSendMessage }) => {
                 <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-text-secondary hover:text-accent p-2 transition-colors"
+                    className="text-[#0C4DA2]/70 hover:text-[#0C4DA2] p-2 transition-colors rounded-full hover:bg-white/50"
                     disabled={uploading}
                 >
                     <MdAttachFile className="w-6 h-6" />
@@ -176,16 +176,16 @@ const MessageInput = ({ chatId, onSendMessage }) => {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 glass-input rounded-full px-4 py-2 text-text-primary placeholder-text-secondary focus:ring-1 focus:ring-accent transition-all"
+                    className="flex-1 bg-white border border-transparent focus:border-[#0C4DA2]/30 rounded-full px-4 py-2 text-[#313131] placeholder-gray-400 focus:ring-2 focus:ring-[#0C4DA2]/20 transition-all shadow-sm outline-none"
                     disabled={uploading}
                 />
 
                 <button
                     type="submit"
                     disabled={(!message.trim() && !attachment) || uploading}
-                    className="glass-button rounded-full p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-gradient-to-r from-[#0C4DA2] to-[#093d80] text-white rounded-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transform active:scale-95 transition-all shadow-md"
                 >
-                    <MdSend className="w-5 h-5" />
+                    <MdSend className="w-5 h-5 ml-0.5" />
                 </button>
             </form>
         </div>
