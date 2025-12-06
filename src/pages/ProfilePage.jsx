@@ -138,7 +138,7 @@ const ProfilePage = () => {
                                 </div>
                             )}
                         </div>
-                        <p className="text-gray-500 text-sm">This is not your username or pin. This name will be visible to your WhatsApp contacts.</p>
+                        <p className="text-gray-500 text-sm">This is not your username or pin. This name will be visible to your Contacts.</p>
                     </div>
 
                     {/* About */}

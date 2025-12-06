@@ -13,6 +13,7 @@ import {
 import ChatHeader from './ChatHeader';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
+import { formatDateForSeparator, checkSameDay } from '../utils/dateUtils';
 
 import GroupDetailsPage from '../pages/GroupDetailsPage';
 import UserDetailsPage from '../pages/UserDetailsPage';
@@ -105,17 +106,31 @@ const ChatWindow = () => {
       />
 
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-        {messages.map((msg) => {
+        {messages.map((msg, index) => {
           const sender = chat.isGroup ? groupMembers[msg.senderId] : otherUser;
+
+          // Date Separator Logic
+          const prevMsg = index > 0 ? messages[index - 1] : null;
+          const showDateSeparator = !prevMsg || !checkSameDay(prevMsg.createdAt, msg.createdAt);
+          const dateLabel = showDateSeparator ? formatDateForSeparator(msg.createdAt) : null;
+
           return (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isGroup={chat.isGroup}
-              sender={msg.senderId === currentUser.uid ? currentUser : sender}
-              onDelete={handleDeleteMessage}
-              chatId={chatId}
-            />
+            <div key={msg.id}>
+              {showDateSeparator && dateLabel && (
+                <div className="flex justify-center my-4 sticky top-0 z-10">
+                  <span className="bg-[#E0E8F2]/80 backdrop-blur-sm text-[#0C4DA2] text-xs font-medium px-3 py-1 rounded-full shadow-sm border border-white/40">
+                    {dateLabel}
+                  </span>
+                </div>
+              )}
+              <MessageBubble
+                message={msg}
+                isGroup={chat.isGroup}
+                sender={msg.senderId === currentUser.uid ? currentUser : sender}
+                onDelete={handleDeleteMessage}
+                chatId={chatId}
+              />
+            </div>
           );
         })}
         <div ref={messagesEndRef} />

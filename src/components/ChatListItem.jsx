@@ -3,11 +3,16 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Avatar from './Avatar';
 
-const ChatListItem = ({ chat, currentUser, onSelect, isSelected }) => {
-    const [otherUser, setOtherUser] = useState(null);
+const ChatListItem = ({ chat, currentUser, onSelect, isSelected, preFetchedOtherUser }) => {
+    const [otherUser, setOtherUser] = useState(preFetchedOtherUser || null);
     const [lastMessageTime, setLastMessageTime] = useState('');
 
     useEffect(() => {
+        if (preFetchedOtherUser) {
+            setOtherUser(preFetchedOtherUser);
+            return;
+        }
+
         if (!chat.isGroup) {
             const otherUserId = chat.members.find(id => id !== currentUser.uid);
             if (otherUserId) {
@@ -19,7 +24,7 @@ const ChatListItem = ({ chat, currentUser, onSelect, isSelected }) => {
                 return () => unsub();
             }
         }
-    }, [chat, currentUser]);
+    }, [chat, currentUser, preFetchedOtherUser]);
 
     useEffect(() => {
         if (chat.lastMessageAt) {

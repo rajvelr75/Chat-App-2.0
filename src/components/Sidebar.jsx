@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { logoutUser } from '../services/authService';
-import { searchUsers, createChat } from '../services/chatService';
+// import { searchUsers, createChat, searchGroups } from '../services/chatService'; // No longer needed here
 import { MdChat, MdMoreVert, MdSearch, MdArrowBack, MdGroupAdd } from 'react-icons/md';
 import ChatList from './ChatList';
 import NewChatModal from './NewChatModal';
@@ -33,36 +34,11 @@ const Sidebar = () => {
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (searchTerm.trim()) {
-        setIsSearching(true);
-        const results = await searchUsers(searchTerm);
-        // Filter out self
-        setSearchResults(results.filter(u => u.uid !== currentUser.uid));
-      } else {
-        setSearchResults([]);
-        setIsSearching(false);
-      }
-    }, 500);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, currentUser]);
 
   const handleLogout = async () => {
     await logoutUser(currentUser.uid);
     navigate('/login');
-  };
-
-  const handleUserSelect = async (otherUser) => {
-    try {
-      const chatId = await createChat(currentUser.uid, otherUser.uid);
-      setSearchTerm(''); // Clear search
-      setIsSearching(false);
-      navigate(`/chat/${chatId}`);
-    } catch (err) {
-      console.error("Error creating chat:", err);
-    }
   };
 
   // Merge auth user and firestore user profile
@@ -102,8 +78,8 @@ const Sidebar = () => {
       {/* Search */}
       <div className="p-3 bg-white border-b border-gray-100 z-10">
         <div className={`flex items-center rounded-lg px-3 py-2 transition-all duration-200 bg-[#F0F2F5] focus-within:bg-white focus-within:ring-1 focus-within:ring-[#0C4DA2] focus-within:shadow-sm`}>
-          {isSearching || searchTerm ? (
-            <MdArrowBack className="w-5 h-5 text-[#0C4DA2] mr-3 cursor-pointer" onClick={() => { setSearchTerm(''); setIsSearching(false); }} />
+          {searchTerm ? (
+            <MdArrowBack className="w-5 h-5 text-[#0C4DA2] mr-3 cursor-pointer" onClick={() => { setSearchTerm(''); }} />
           ) : (
             <MdSearch className="w-5 h-5 text-gray-500 mr-3" />
           )}
@@ -120,28 +96,7 @@ const Sidebar = () => {
 
       {/* Chat List or Search Results */}
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
-        {isSearching || searchTerm ? (
-          <div className="py-2">
-            {searchResults.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-sm">No users found</div>
-            ) : (
-              searchResults.map(user => (
-                <div key={user.uid} onClick={() => handleUserSelect(user)} className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0">
-                  <div className="mr-4 relative">
-                    <Avatar user={user} size="w-12 h-12" />
-                    <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-gray-900 font-medium truncate text-base">{user.displayName}</h3>
-                    <p className="text-gray-500 text-sm truncate">{user.about || 'Available'}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        ) : (
-          <ChatList />
-        )}
+        <ChatList searchTerm={searchTerm} />
       </div>
 
       {/* Modals */}

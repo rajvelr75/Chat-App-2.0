@@ -6,6 +6,7 @@ import { MdClose, MdAdd, MdDelete } from 'react-icons/md';
 
 const NewGroupModal = ({ onClose }) => {
     const [groupName, setGroupName] = useState('');
+    const [description, setDescription] = useState('');
     const [email, setEmail] = useState('');
     const [members, setMembers] = useState([]);
     const [error, setError] = useState('');
@@ -47,7 +48,7 @@ const NewGroupModal = ({ onClose }) => {
         setError('');
 
         try {
-            const chatId = await createGroupChat(currentUser, groupName, members);
+            const chatId = await createGroupChat(currentUser, groupName, members, description);
             onClose();
             navigate(`/chat/${chatId}`);
         } catch (err) {
@@ -77,6 +78,16 @@ const NewGroupModal = ({ onClose }) => {
                             onChange={(e) => setGroupName(e.target.value)}
                             className="w-full bg-app-bg border border-gray-600 rounded p-2 text-text-primary focus:outline-none focus:border-accent"
                             placeholder="Enter group name"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm text-text-secondary mb-1">Description (Optional)</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            className="w-full bg-app-bg border border-gray-600 rounded p-2 text-text-primary focus:outline-none focus:border-accent resize-none h-20"
+                            placeholder="Add a group description..."
                         />
                     </div>
 

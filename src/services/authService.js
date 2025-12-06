@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from "firebase/auth";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
@@ -15,6 +15,7 @@ export const registerUser = async (email, password, displayName) => {
             uid: user.uid,
             email: user.email,
             displayName: displayName,
+            displayNameLower: displayName.toLowerCase(),
             photoURL: user.photoURL || "",
             about: "Hey there! I am using Chat App.",
             lastSeen: serverTimestamp(),
@@ -50,6 +51,13 @@ export const logoutUser = async (uid) => {
             });
         }
         await signOut(auth);
+    } catch (error) {
+        throw error;
+    }
+};
+export const resetPassword = async (email) => {
+    try {
+        await sendPasswordResetEmail(auth, email);
     } catch (error) {
         throw error;
     }

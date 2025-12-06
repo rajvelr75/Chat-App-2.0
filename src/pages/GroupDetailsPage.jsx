@@ -4,7 +4,7 @@ import { doc, onSnapshot, updateDoc, arrayUnion, collection, query, where, getDo
 import { db } from '../services/firebase';
 import { MdArrowBack, MdPersonAdd, MdGroup, MdEdit, MdCheck, MdCameraAlt, MdDelete, MdSecurity } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
-import { updateGroupName, updateGroupPhoto, makeAdmin, removeParticipant, checkAdmin, addParticipant, uploadPublicChunks } from '../services/chatService';
+import { updateGroupName, updateGroupPhoto, makeAdmin, removeParticipant, checkAdmin, addParticipant, uploadPublicChunks, updateGroupDescription } from '../services/chatService';
 import { validateFile } from '../utils/uploadHelpers';
 import Avatar from '../components/Avatar';
 
@@ -24,6 +24,8 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [newName, setNewName] = useState('');
+    const [editingDescription, setEditingDescription] = useState(false);
+    const [newDescription, setNewDescription] = useState('');
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const fileInputRef = useRef(null);
 
@@ -32,9 +34,10 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
             const unsub = onSnapshot(doc(db, "chats", groupId), async (chatDoc) => {
                 if (chatDoc.exists()) {
                     const chatData = chatDoc.data();
-                    const fullChat = { id: chatDoc.id, ...chatData };
+                    const fullChat = { id: chatDoc.id, ...chatData, isGroup: true };
                     setChat(fullChat);
                     setNewName(chatData.name);
+                    setNewDescription(chatData.description || '');
                     setIsAdmin(checkAdmin(fullChat, currentUser.uid));
                 }
                 setLoading(false);
@@ -70,6 +73,20 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
         } catch (error) {
             console.error("Error updating group name:", error);
             alert("Failed to update group name");
+        }
+    };
+
+    const handleUpdateDescription = async () => {
+        if (newDescription === chat.description) {
+            setEditingDescription(false);
+            return;
+        }
+        try {
+            await updateGroupDescription(groupId, newDescription);
+            setEditingDescription(false);
+        } catch (error) {
+            console.error("Error updating group description:", error);
+            alert("Failed to update group description");
         }
     };
 
@@ -201,7 +218,7 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
                         </div>
 
                         {/* Group Name & Stats */}
-                        <div className="text-center space-y-2 w-full max-w-lg">
+                        <div className="text-center space-y-2 w-full max-w-lg mb-4">
                             {editingName ? (
                                 <div className="flex items-center justify-center gap-2">
                                     <input
@@ -232,6 +249,51 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
                                 {members.length} {members.length === 1 ? 'member' : 'members'}
                             </p>
                         </div>
+
+                        {/* Group Description */}
+                        <div className="w-full max-w-lg text-center px-4">
+                            {editingDescription ? (
+                                <div className="flex flex-col gap-2">
+                                    <textarea
+                                        value={newDescription}
+                                        onChange={(e) => setNewDescription(e.target.value)}
+                                        className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-text-primary focus:outline-none focus:border-accent w-full resize-none h-24 custom-scrollbar text-sm"
+                                        placeholder="Add a group description..."
+                                        autoFocus
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            onClick={() => { setEditingDescription(false); setNewDescription(chat.description || ''); }}
+                                            className="px-3 py-1 text-sm text-text-secondary hover:text-text-primary"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleUpdateDescription}
+                                            className="px-3 py-1 text-sm bg-accent text-black rounded-lg hover:bg-accent/90 shadow-md"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="group relative">
+                                    {chat.description ? (
+                                        <p className="text-text-secondary/80 text-sm leading-relaxed whitespace-pre-wrap">{chat.description}</p>
+                                    ) : (
+                                        isAdmin && <p className="text-text-secondary/50 text-sm italic cursor-pointer hover:text-accent" onClick={() => setEditingDescription(true)}>Add a group description...</p>
+                                    )}
+                                    {isAdmin && chat.description && (
+                                        <button
+                                            onClick={() => setEditingDescription(true)}
+                                            className="absolute -right-6 top-0 text-text-secondary hover:text-accent opacity-0 group-hover:opacity-100 transition-all duration-300"
+                                        >
+                                            <MdEdit className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Members Section */}
@@ -241,51 +303,56 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
                             <span className="text-text-secondary text-sm bg-white/5 px-3 py-1 rounded-full">{members.length}</span>
                         </div>
 
+
                         {/* Add Member (Admin Only) */}
                         {isAdmin && (
-                            <div className="p-4 bg-accent/5 border-b border-white/5">
-                                <form onSubmit={handleAddMember} className="flex items-center gap-3">
-                                    <div className="p-3 bg-accent/20 rounded-full text-accent">
-                                        <MdPersonAdd className="w-6 h-6" />
-                                    </div>
+                            <div className="p-4 bg-gray-50 border-b border-gray-100">
+                                <form onSubmit={handleAddMember} className="flex items-center gap-2">
                                     <input
                                         type="email"
                                         value={newMemberEmail}
                                         onChange={(e) => setNewMemberEmail(e.target.value)}
                                         placeholder="Add participant by email..."
-                                        className="flex-1 bg-transparent border-none focus:ring-0 text-text-primary placeholder-text-secondary/50 py-2"
+                                        className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-[#0C4DA2]/20 focus:border-[#0C4DA2] text-gray-900 placeholder-gray-400 outline-none transition-all text-sm"
                                     />
                                     <button
                                         type="submit"
                                         disabled={addingMember || !newMemberEmail.trim()}
-                                        className="px-4 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white rounded-xl font-medium text-sm transition-all shadow-lg"
+                                        className="p-3 bg-[#0C4DA2] hover:bg-[#0A3D80] disabled:opacity-50 text-white rounded-full shadow-md transition-all active:scale-95 flex-shrink-0"
+                                        title="Add Participant"
                                     >
-                                        Add
+                                        <MdPersonAdd className="w-5 h-5" />
                                     </button>
                                 </form>
                             </div>
                         )}
 
                         {/* Members List */}
-                        <div className="divide-y divide-white/5">
-                            {members.map((member, index) => {
+                        <div className="divide-y divide-gray-100">
+                            {[...members].sort((a, b) => {
+                                const isAdminA = checkAdmin(chat, a.uid);
+                                const isAdminB = checkAdmin(chat, b.uid);
+                                if (isAdminA && !isAdminB) return -1;
+                                if (!isAdminA && isAdminB) return 1;
+                                return (a.displayName || '').localeCompare(b.displayName || '');
+                            }).map((member, index) => {
                                 const isMemberAdmin = checkAdmin(chat, member.uid);
                                 const isMe = member.uid === currentUser.uid;
 
                                 return (
                                     <div
                                         key={member.uid}
-                                        className="group p-4 flex items-center hover:bg-white/5 transition-colors duration-200"
+                                        className="group p-4 flex items-center hover:bg-gray-50 transition-colors duration-200"
                                     >
                                         <div className="mr-4 relative">
                                             <Avatar
                                                 user={member}
                                                 size="w-12 h-12"
-                                                className="shadow-sm"
+                                                className="shadow-sm border border-gray-100"
                                                 onClick={() => navigate(`/user/${member.uid}`)}
                                             />
                                             {isMemberAdmin && (
-                                                <div className="absolute -bottom-1 -right-1 bg-accent text-white p-0.5 rounded-full border-2 border-[#1a1a1a]" title="Admin">
+                                                <div className="absolute -bottom-1 -right-1 bg-[#0C4DA2] text-white p-0.5 rounded-full border-2 border-white shadow-sm" title="Admin">
                                                     <MdSecurity className="w-3 h-3" />
                                                 </div>
                                             )}
@@ -293,11 +360,11 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <h4 className="text-text-primary font-medium truncate text-base">
+                                                <h4 className="text-gray-900 font-semibold truncate text-base">
                                                     {isMe ? "You" : member.displayName}
                                                 </h4>
                                                 {isMemberAdmin && (
-                                                    <span className="text-[10px] bg-accent/20 text-accent px-2 py-0.5 rounded-full border border-accent/20 font-bold tracking-wide">
+                                                    <span className="text-[10px] bg-[#0C4DA2] text-white px-2 py-0.5 rounded-full font-bold tracking-wide shadow-sm">
                                                         ADMIN
                                                     </span>
                                                 )}

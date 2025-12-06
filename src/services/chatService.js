@@ -74,7 +74,7 @@ export const createChatWithEmail = async (currentUser, email) => {
     return await createChat(currentUser.uid, otherUser.uid);
 };
 
-export const createGroupChat = async (currentUser, groupName, memberEmails) => {
+export const createGroupChat = async (currentUser, groupName, memberEmails, description = '') => {
     // 1. Resolve emails to UIDs
     const memberIds = [currentUser.uid];
 
@@ -103,6 +103,8 @@ export const createGroupChat = async (currentUser, groupName, memberEmails) => {
         createdAt: serverTimestamp(),
         isGroup: true,
         name: groupName,
+        nameLower: groupName.toLowerCase(),
+        description: description,
         createdBy: currentUser.uid,
         admins: [currentUser.uid], // Initialize creator as admin
         lastMessage: "Group created",
@@ -264,15 +266,20 @@ export const getMessages = (chatId, userId, callback) => {
 
 export const deleteMessage = async (chatId, messageId) => {
     await deleteDoc(doc(db, "chats", chatId, "messages", messageId));
-    // Note: Updating lastMessage if the deleted message was the last one is complex 
-    // and omitted for brevity, but ideally should be handled.
 };
 
 // --- Group Admin Functions ---
 
 export const updateGroupName = async (chatId, newName) => {
     await updateDoc(doc(db, "chats", chatId), {
-        name: newName
+        name: newName,
+        nameLower: newName.toLowerCase()
+    });
+};
+
+export const updateGroupDescription = async (chatId, newDescription) => {
+    await updateDoc(doc(db, "chats", chatId), {
+        description: newDescription
     });
 };
 
@@ -343,9 +350,27 @@ export const checkAdmin = (chat, userId) => {
 // --- User Search & Profile ---
 
 export const searchUsers = async (searchTerm) => {
-    const q = query(collection(db, "users"), orderBy("displayName"), where("displayName", ">=", searchTerm), where("displayName", "<=", searchTerm + '\uf8ff'));
+    const lowerTerm = searchTerm.toLowerCase();
+    const q = query(
+        collection(db, "users"),
+        orderBy("displayNameLower"),
+        where("displayNameLower", ">=", lowerTerm),
+        where("displayNameLower", "<=", lowerTerm + '\uf8ff')
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data());
+};
+
+export const searchGroups = async (searchTerm) => {
+    const lowerTerm = searchTerm.toLowerCase();
+    const q = query(
+        collection(db, "chats"),
+        orderBy("nameLower"),
+        where("nameLower", ">=", lowerTerm),
+        where("nameLower", "<=", lowerTerm + '\uf8ff')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 export const getUserProfile = async (userId) => {
@@ -358,8 +383,12 @@ export const getUserProfile = async (userId) => {
 };
 
 export const updateUserProfile = async (userId, data) => {
+    const updates = { ...data };
+    if (data.displayName) {
+        updates.displayNameLower = data.displayName.toLowerCase();
+    }
     const docRef = doc(db, "users", userId);
-    await updateDoc(docRef, data);
+    await updateDoc(docRef, updates);
 };
 
 // --- Encrypted Media Storage ---
