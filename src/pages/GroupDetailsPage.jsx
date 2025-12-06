@@ -38,13 +38,13 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
                     setChat(fullChat);
                     setNewName(chatData.name);
                     setNewDescription(chatData.description || '');
-                    setIsAdmin(checkAdmin(fullChat, currentUser.uid));
+                    setIsAdmin(checkAdmin(fullChat, currentUser?.uid));
                 }
                 setLoading(false);
             });
             return () => unsub();
         }
-    }, [groupId, currentUser.uid]);
+    }, [groupId, currentUser?.uid]);
 
     useEffect(() => {
         const fetchMembers = async () => {
@@ -137,7 +137,9 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
             }
 
             // Use the service function to handle key distribution
-            await addParticipant(groupId, newUser.uid, currentUser.uid);
+            if (currentUser?.uid) {
+                await addParticipant(groupId, newUser.uid, currentUser.uid);
+            }
 
             setNewMemberEmail('');
             alert("Member added!");
@@ -337,7 +339,7 @@ const GroupDetailsPage = ({ chatId: propChatId, onClose }) => {
                                 return (a.displayName || '').localeCompare(b.displayName || '');
                             }).map((member, index) => {
                                 const isMemberAdmin = checkAdmin(chat, member.uid);
-                                const isMe = member.uid === currentUser.uid;
+                                const isMe = member.uid === currentUser?.uid;
 
                                 return (
                                     <div

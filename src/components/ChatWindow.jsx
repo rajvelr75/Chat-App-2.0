@@ -49,7 +49,7 @@ const ChatWindow = () => {
           setGroupMembers(membersData);
         } else {
           // Fetch other user for 1-on-1
-          const otherUserId = chatData.members.find(id => id !== currentUser.uid);
+          const otherUserId = chatData.members.find(id => id !== currentUser?.uid);
           if (otherUserId) {
             const user = await getUserProfile(otherUserId);
             setOtherUser(user);
@@ -61,12 +61,12 @@ const ChatWindow = () => {
 
     fetchChatData();
 
-    const unsubscribe = getMessages(chatId, currentUser.uid, (msgs) => {
+    const unsubscribe = getMessages(chatId, currentUser?.uid, (msgs) => {
       setMessages(msgs);
     });
 
     return () => unsubscribe();
-  }, [chatId, currentUser.uid]);
+  }, [chatId, currentUser?.uid]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,7 +126,7 @@ const ChatWindow = () => {
               <MessageBubble
                 message={msg}
                 isGroup={chat.isGroup}
-                sender={msg.senderId === currentUser.uid ? currentUser : sender}
+                sender={msg.senderId === currentUser?.uid ? currentUser : sender}
                 onDelete={handleDeleteMessage}
                 chatId={chatId}
               />
@@ -139,7 +139,9 @@ const ChatWindow = () => {
       <MessageInput
         chatId={chatId}
         onSendMessage={async (text, attachment) => {
-          await sendMessage(chatId, currentUser.uid, text, attachment);
+          if (currentUser?.uid) {
+            await sendMessage(chatId, currentUser.uid, text, attachment);
+          }
         }}
       />
 

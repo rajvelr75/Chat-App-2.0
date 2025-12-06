@@ -46,6 +46,7 @@ const MessageInput = ({ chatId, onSendMessage }) => {
         setUploading(true);
         try {
             if (attachment) {
+                if (!currentUser?.uid) throw new Error("User not authenticated");
                 const chatKey = await getChatKey(chatId, currentUser.uid);
                 if (!chatKey) throw new Error("Could not retrieve chat key for encryption");
 

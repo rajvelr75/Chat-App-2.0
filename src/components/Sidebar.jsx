@@ -37,7 +37,7 @@ const Sidebar = () => {
 
 
   const handleLogout = async () => {
-    await logoutUser(currentUser.uid);
+    if (currentUser?.uid) await logoutUser(currentUser.uid);
     navigate('/login');
   };
 

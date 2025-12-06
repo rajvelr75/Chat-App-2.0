@@ -10,7 +10,7 @@ import Avatar from './Avatar';
 const MessageBubble = ({ message, isGroup, sender, onDelete, chatId }) => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
-    const isOwn = message.senderId === currentUser.uid;
+    const isOwn = message.senderId === currentUser?.uid;
     const [showMenu, setShowMenu] = useState(false);
     const [mediaUrl, setMediaUrl] = useState(null);
     const [decrypting, setDecrypting] = useState(false);
@@ -69,7 +69,7 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId }) => {
                 URL.revokeObjectURL(mediaUrl);
             }
         };
-    }, [message, chatId, currentUser.uid]);
+    }, [message, chatId, currentUser?.uid]);
 
     const formatTime = (timestamp) => {
         if (!timestamp) return '';
