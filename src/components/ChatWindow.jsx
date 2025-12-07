@@ -7,7 +7,9 @@ import {
   getMessages,
   getUserProfile,
   clearChat,
-  deleteMessage
+  deleteMessage,
+  markMessageDelivered,
+  markMessageRead
 } from '../services/chatService';
 
 import ChatHeader from './ChatHeader';
@@ -28,6 +30,7 @@ const ChatWindow = () => {
   const [loading, setLoading] = useState(true);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showUserInfo, setShowUserInfo] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -63,10 +66,38 @@ const ChatWindow = () => {
 
     const unsubscribe = getMessages(chatId, currentUser?.uid, (msgs) => {
       setMessages(msgs);
+
+      // Mark as delivered
+      if (currentUser?.uid) {
+        msgs.forEach(msg => {
+          if (msg.senderId !== currentUser.uid && !msg.deliveredTo?.includes(currentUser.uid)) {
+            markMessageDelivered(chatId, msg.id, currentUser.uid);
+          }
+        });
+      }
     });
 
     return () => unsubscribe();
   }, [chatId, currentUser?.uid]);
+
+  // Mark as Read when user sees messages
+  useEffect(() => {
+    if (messages.length > 0 && currentUser?.uid && chatId) {
+      // Debounce or batch might be better, but for now simpe loop
+      // If window has focus? Assuming if ChatWindow is mounted and we have messages, they are "seen"
+      // Logic: Mark all unread messages from others as read.
+
+      const unreadMessages = messages.filter(
+        msg => msg.senderId !== currentUser.uid && !msg.readBy?.includes(currentUser.uid)
+      );
+
+      if (unreadMessages.length > 0) {
+        unreadMessages.forEach(msg => {
+          markMessageRead(chatId, msg.id, currentUser.uid);
+        });
+      }
+    }
+  }, [messages, currentUser?.uid, chatId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -128,6 +159,7 @@ const ChatWindow = () => {
                 isGroup={chat.isGroup}
                 sender={msg.senderId === currentUser?.uid ? currentUser : sender}
                 onDelete={handleDeleteMessage}
+                onReply={setReplyingTo}
                 chatId={chatId}
               />
             </div>
@@ -138,9 +170,12 @@ const ChatWindow = () => {
 
       <MessageInput
         chatId={chatId}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
         onSendMessage={async (text, attachment) => {
           if (currentUser?.uid) {
-            await sendMessage(chatId, currentUser.uid, text, attachment);
+            await sendMessage(chatId, currentUser.uid, text, attachment, replyingTo);
+            setReplyingTo(null);
           }
         }}
       />

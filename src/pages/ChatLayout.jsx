@@ -35,9 +35,8 @@ const ChatLayout = () => {
                     <Route path="/" element={
                         <div className="h-full flex flex-col items-center justify-center text-gray-400 border-b-8 border-accent">
                             <div className="text-center">
-                                <h1 className="text-3xl font-light text-gray-200 mb-4">Chat App</h1>
-                                <p>Send and receive messages without keeping your phone online.</p>
-                                <p>Use Chat App on up to 4 linked devices and 1 phone.</p>
+                                <h1 className="text-3xl font-light text-gray-400 mb-4">Chat App</h1>
+                                <p>Your Personal messages are end-to-end encrypted🔒</p>
                             </div>
                         </div>
                     } />

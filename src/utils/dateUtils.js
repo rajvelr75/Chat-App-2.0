@@ -43,3 +43,7 @@ export const checkSameDay = (timestamp1, timestamp2) => {
         d1.getDate() === d2.getDate()
     );
 };
+
+export const getDayString = (date) => {
+    return date.toISOString().split('T')[0];
+};

@@ -59,7 +59,7 @@ const UserDetailsPage = ({ uid: propUid, onClose }) => {
                     {/* Name */}
                     <div className="text-center">
                         <h2 className="text-2xl font-bold text-text-primary">{user.displayName}</h2>
-                        <p className="text-accent font-medium mt-1">{status}</p>
+                        <p className="text-[#26B637] font-bold mt-1">{status}</p>
                     </div>
 
                     <div className="space-y-6 pt-4 border-t border-glass">

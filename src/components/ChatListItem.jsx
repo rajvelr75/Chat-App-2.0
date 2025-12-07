@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Avatar from './Avatar';
+import { useStreakWarning } from '../hooks/useStreakWarning';
+import { MdAccessTime } from 'react-icons/md';
 
 const ChatListItem = ({ chat, currentUser, onSelect, isSelected, preFetchedOtherUser }) => {
     const [otherUser, setOtherUser] = useState(preFetchedOtherUser || null);
     const [lastMessageTime, setLastMessageTime] = useState('');
+    const showStreakWarning = useStreakWarning(chat);
 
     useEffect(() => {
         if (preFetchedOtherUser) {
@@ -59,7 +62,18 @@ const ChatListItem = ({ chat, currentUser, onSelect, isSelected, preFetchedOther
 
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline mb-1">
-                    <h3 className={`font-medium truncate text-base ${isSelected ? 'text-white' : 'text-gray-900'}`}>{displayName}</h3>
+                    <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                        <h3 className={`font-medium truncate text-base ${isSelected ? 'text-white' : 'text-gray-900'}`}>{displayName}</h3>
+                        {chat.streak > 0 && (
+                            <div className="flex items-center flex-shrink-0 gap-0.5 animate-pulse ml-1">
+                                <span className="text-sm">🔥</span>
+                                <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-orange-500'}`}>{chat.streak}</span>
+                                {showStreakWarning && (
+                                    <MdAccessTime className="w-3 h-3 text-red-500 ml-1" title="Streak ends in < 1 hour" />
+                                )}
+                            </div>
+                        )}
+                    </div>
                     <span className={`text-xs flex-shrink-0 ml-2 ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
                         {lastMessageTime}
                     </span>

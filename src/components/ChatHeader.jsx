@@ -4,11 +4,13 @@ import { MdMoreVert, MdArrowBack, MdDeleteSweep } from 'react-icons/md';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Avatar from './Avatar';
+import { useStreakWarning } from '../hooks/useStreakWarning';
 
 const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat, onGroupInfoClick, onUserInfoClick }) => {
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
     const [otherUser, setOtherUser] = useState(initialOtherUser);
+    const showStreakWarning = useStreakWarning(chat);
 
     useEffect(() => {
         if (!chat.isGroup && initialOtherUser?.uid) {
@@ -78,8 +80,21 @@ const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat, onGroupInf
                     <div>
                         <h2 className="text-white font-medium">{displayName}</h2>
                         <div className="flex items-center">
-                            {status === 'Online' && <div className="w-2 h-2 bg-[#E4B316] rounded-full mr-1.5"></div>}
+                            {status === 'Online' && <div className="w-2 h-2 bg-[#26B637] rounded-full mr-1.5"></div>}
                             <p className="text-xs text-white/80">{status}</p>
+
+                            {/* Streak Indicator for Header */}
+                            {chat.streak > 0 && (
+                                <div className="flex items-center gap-1 ml-3 px-2 py-0.5 bg-white/10 rounded-full animate-pulse border border-white/20">
+                                    <span className="text-sm">🔥</span>
+                                    <span className="text-xs font-bold text-[#F9B001]">{chat.streak}</span>
+                                    {showStreakWarning && (
+                                        <span className="text-[10px] text-red-300 ml-1 font-medium whitespace-nowrap hidden sm:inline">
+                                            ⚠️ Ends in &lt; 1h
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -18,6 +18,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { generateChatKey, encryptMessage, decryptMessage, wrapKeyForUser, unwrapKeyForUser } from "./cryptoService";
+import { checkSameDay, getDayString } from "../utils/dateUtils";
 
 // --- Chat Management ---
 
@@ -44,6 +45,9 @@ export const createChat = async (currentUserId, otherUserId) => {
                 isGroup: false,
                 lastMessage: null,
                 lastMessageAt: serverTimestamp(),
+                streak: 0,
+                lastStreakUpdateDate: null,
+                lastMessageTimestamps: {}
             });
 
             // 4. Store Encrypted Keys
@@ -186,7 +190,7 @@ const getChatKey = async (chatId, userId) => {
 
 // --- Message Management ---
 
-export const sendMessage = async (chatId, senderId, text, attachment = null) => {
+export const sendMessage = async (chatId, senderId, text, attachment = null, replyTo = null) => {
     try {
         let encryptedData = { ciphertext: null, iv: null };
 
@@ -205,8 +209,20 @@ export const sendMessage = async (chatId, senderId, text, attachment = null) => 
             ciphertext: encryptedData.ciphertext,
             iv: encryptedData.iv,
             createdAt: serverTimestamp(),
-            status: "sent"
+            createdAt: serverTimestamp(),
+            status: "sent",
+            replyTo: replyTo || null,
+            deliveredTo: [],
+            readBy: [],
+            deliveredAt: {},
+            readAt: {}
         };
+
+        if (attachment && attachment.replyTo) {
+            // If passed via attachment arg for text messages (hacky but fits current signature)
+            // Actually, let's update signature.
+            // But to avoid breaking changes, let's check if the 4th arg is an object with replyTo
+        }
 
         if (attachment) {
             if (attachment.type === 'image') {
@@ -225,10 +241,79 @@ export const sendMessage = async (chatId, senderId, text, attachment = null) => 
         else if (attachment?.type === 'image') lastMsgText = "📷 Photo";
         else if (attachment?.type === 'video') lastMsgText = "🎥 Video";
 
-        await updateDoc(doc(db, "chats", chatId), {
+        const chatDocRef = doc(db, "chats", chatId);
+        const chatDocSnap = await getDoc(chatDocRef);
+        let updates = {
             lastMessage: lastMsgText,
             lastMessageAt: serverTimestamp()
-        });
+        };
+
+        if (chatDocSnap.exists() && !chatDocSnap.data().isGroup) {
+            const chatData = chatDocSnap.data();
+            const now = new Date();
+            const dayString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+            // Check if we need to reset streak first (if inactive for > 1 day)
+            let streak = chatData.streak || 0;
+            let lastStreakUpdateDate = chatData.lastStreakUpdateDate || null;
+
+            if (lastStreakUpdateDate) {
+                const lastDate = new Date(lastStreakUpdateDate);
+                const diffTime = Math.abs(now - lastDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                // If last update was more than yesterday (1 day gap allowed, so diffDays > 2? No.)
+                // Logic: If last update was Day 1, and today is Day 3. Diff is 2 days. Reset.
+                // If last update was Day 1, today is Day 2. Diff is 1 day. Keep.
+
+                // Simpler: Check days between.
+                // Actually, let's use the dayString logic.
+                const lastDayString = lastStreakUpdateDate;
+                const prevDay = new Date(now);
+                prevDay.setDate(prevDay.getDate() - 1);
+                const prevDayString = prevDay.toISOString().split('T')[0];
+
+                // If last update was NOT today and NOT yesterday, reset.
+                if (dayString !== lastDayString && prevDayString !== lastDayString) {
+                    streak = 0;
+                }
+            }
+
+            // Update current user's timestamp
+            const timestamps = chatData.lastMessageTimestamps || {};
+            timestamps[senderId] = now.toISOString();
+
+            // Check for increment
+            // We need keys from timestamps. 
+            const userIds = Object.keys(timestamps);
+            // Since it's 1:1, should have 2 users eventually.
+            // If we have 2 users with timestamps from TODAY.
+
+            let counts = 0;
+            let bothSentToday = true;
+
+            // get chat members to ensure we only check actual members
+            const members = chatData.members || [];
+            if (members.length === 2) {
+                for (const mId of members) {
+                    const ts = timestamps[mId];
+                    if (!ts || ts.split('T')[0] !== dayString) {
+                        bothSentToday = false;
+                        break;
+                    }
+                }
+
+                if (bothSentToday && lastStreakUpdateDate !== dayString) {
+                    streak += 1;
+                    lastStreakUpdateDate = dayString;
+                }
+            }
+
+            updates.streak = streak;
+            updates.lastStreakUpdateDate = lastStreakUpdateDate;
+            updates.lastMessageTimestamps = timestamps;
+        }
+
+        await updateDoc(chatDocRef, updates);
     } catch (err) {
         throw err;
     }
@@ -266,6 +351,22 @@ export const getMessages = (chatId, userId, callback) => {
 
 export const deleteMessage = async (chatId, messageId) => {
     await deleteDoc(doc(db, "chats", chatId, "messages", messageId));
+};
+
+export const markMessageDelivered = async (chatId, messageId, userId) => {
+    const messageRef = doc(db, "chats", chatId, "messages", messageId);
+    await updateDoc(messageRef, {
+        deliveredTo: arrayUnion(userId),
+        [`deliveredAt.${userId}`]: serverTimestamp()
+    });
+};
+
+export const markMessageRead = async (chatId, messageId, userId) => {
+    const messageRef = doc(db, "chats", chatId, "messages", messageId);
+    await updateDoc(messageRef, {
+        readBy: arrayUnion(userId),
+        [`readAt.${userId}`]: serverTimestamp()
+    });
 };
 
 // --- Group Admin Functions ---
@@ -428,10 +529,18 @@ export const sendMediaMessage = async (chatId, senderId, metadata) => {
         type: metadata.type, // 'image' or 'video'
         encrypted: true,
         mimeType: metadata.mimeType,
-        iv: metadata.iv,
+        mediaIv: metadata.mediaIv || metadata.iv, // New field for media IV
+        iv: metadata.textIv || metadata.iv, // Use text IV if available, else fallback (though fallback might be wrong context)
         chunkCount: metadata.chunkCount,
+        ciphertext: metadata.textCiphertext || null, // Stores encrypted caption
         createdAt: serverTimestamp(),
-        status: "sent"
+        createdAt: serverTimestamp(),
+        status: "sent",
+        replyTo: metadata.replyTo || null,
+        deliveredTo: [],
+        readBy: [],
+        deliveredAt: {},
+        readAt: {}
     };
 
     if (metadata.thumbnailAvailable) {

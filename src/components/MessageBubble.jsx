@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MdExpandMore, MdDelete, MdClose } from 'react-icons/md';
+import { MdExpandMore, MdDelete, MdClose, MdReply, MdCheck, MdDoneAll } from 'react-icons/md';
 import { deleteMessage, downloadChunks } from '../services/chatService';
 import { getChatKey } from '../services/cryptoService';
 import { decryptArrayBuffer, combineChunks } from '../services/mediaCryptoService';
 import Avatar from './Avatar';
 
-const MessageBubble = ({ message, isGroup, sender, onDelete, chatId }) => {
+const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const isOwn = message.senderId === currentUser?.uid;
@@ -42,7 +42,7 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId }) => {
                 // Decrypt
                 const decryptedBuffer = await decryptArrayBuffer(
                     encryptedBuffer,
-                    message.iv,
+                    message.mediaIv || message.iv,
                     chatKey
                 );
 
@@ -94,6 +94,51 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId }) => {
         }
     };
 
+    const handleReplyClick = () => {
+        if (onReply) {
+            onReply({
+                ...message,
+                senderName: sender?.displayName || 'Unknown'
+            });
+        }
+    };
+
+    const renderTicks = (msg) => {
+        if (!msg.status || msg.status === 'sent') {
+            return <MdCheck className="w-3.5 h-3.5 text-gray-400" />;
+        }
+
+        // Check for read
+        const isRead = msg.readBy && msg.readBy.length > 0;
+        // For 1:1, if readBy has anyone (implied other user), it's read.
+        // For group, we might want more complex logic, but "blue ticks" if read by someone is OK for now
+        // OR better: if readBy includes all other members? User asked for WhatsApp style.
+        // Simplified: Blue if read by at least one person (or specific logic for 1:1)
+
+        if (isRead) {
+            return <MdDoneAll className="w-3.5 h-3.5 text-blue-500" />;
+        }
+
+        // Delivered
+        return <MdDoneAll className="w-3.5 h-3.5 text-gray-400" />;
+    };
+
+    const getReadStatusTitle = (msg) => {
+        if (msg.readAt) {
+            // If 1:1, usually just one key.
+            const entries = Object.entries(msg.readAt);
+            if (entries.length > 0) {
+                // Format first one? Or list?
+                // "Seen at HH:MM"
+                const first = entries[0][1];
+                if (first && first.toDate) {
+                    return `Seen at ${formatTime(first)}`;
+                }
+            }
+        }
+        return msg.status || 'Sent';
+    };
+
     return (
         <>
             <div
@@ -113,7 +158,7 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId }) => {
 
                 <div className={`relative max-w-[70%] rounded-2xl p-3 shadow-glass backdrop-blur-md border border-white/10 ${isOwn
                     ? 'bg-[rgba(0,194,255,0.15)] rounded-br-none'
-                    : 'bg-[rgba(255,255,255,0.05)] rounded-bl-none'
+                    : 'bg-gray-200 rounded-bl-none'
                     }`}>
 
                     {/* Sender Name in Group */}
@@ -124,6 +169,14 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId }) => {
                         >
                             {sender?.displayName || 'Unknown'}
                         </p>
+                    )}
+
+                    {/* Reply Context */}
+                    {message.replyTo && (
+                        <div className="mb-2 p-2 rounded-lg bg-black/5 border-l-4 border-accent/50 text-xs">
+                            <p className="font-bold text-accent mb-0.5">{message.replyTo.senderName}</p>
+                            <p className="opacity-70 truncate">{message.replyTo.text}</p>
+                        </div>
                     )}
 
                     {/* Media Content */}
@@ -171,17 +224,32 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId }) => {
                         <span className="text-[10px] text-text-secondary opacity-70">
                             {formatTime(message.createdAt)}
                         </span>
+                        {isOwn && (
+                            <span className="ml-1" title={getReadStatusTitle(message)}>
+                                {renderTicks(message)}
+                            </span>
+                        )}
                     </div>
 
-                    {/* Menu Toggle (Hover) */}
-                    {isOwn && (
+                    {/* Actions (Hover) */}
+                    <div className={`absolute top-1 ${isOwn ? 'right-1' : 'right-[-40px]'} flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
                         <button
-                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-text-secondary hover:text-text-primary bg-black/20 rounded-full p-1"
-                            onClick={() => setShowMenu(!showMenu)}
+                            className="bg-black/10 hover:bg-black/20 text-text-secondary rounded-full p-1"
+                            onClick={handleReplyClick}
+                            title="Reply"
                         >
-                            <MdExpandMore className="w-4 h-4" />
+                            <MdReply className="w-4 h-4" />
                         </button>
-                    )}
+
+                        {isOwn && (
+                            <button
+                                className="text-text-secondary hover:text-text-primary bg-black/10 hover:bg-black/20 rounded-full p-1"
+                                onClick={() => setShowMenu(!showMenu)}
+                            >
+                                <MdExpandMore className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
 
                     {/* Dropdown Menu */}
                     {showMenu && (

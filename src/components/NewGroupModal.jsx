@@ -68,7 +68,7 @@ const NewGroupModal = ({ onClose }) => {
                 </div>
 
                 <div className="p-4 space-y-4 overflow-y-auto">
-                    {error && <div className="bg-red-500 bg-opacity-10 text-red-500 p-2 rounded text-sm">{error}</div>}
+                    {error && <div className="bg-red-500 bg-opacity-10 text-white p-2 rounded text-sm">{error}</div>}
 
                     <div>
                         <label className="block text-sm text-text-secondary mb-1">Group Name</label>
@@ -116,7 +116,7 @@ const NewGroupModal = ({ onClose }) => {
                             <label className="block text-sm text-text-secondary">Participants ({members.length})</label>
                             <div className="bg-app-bg rounded p-2 space-y-1 max-h-32 overflow-y-auto">
                                 {members.map(m => (
-                                    <div key={m} className="flex items-center justify-between text-sm text-text-primary bg-gray-700 bg-opacity-30 p-1 rounded">
+                                    <div key={m} className="flex items-center justify-between text-sm text-white bg-gray-700 bg-opacity-30 p-1 rounded">
                                         <span>{m}</span>
                                         <button onClick={() => handleRemoveMember(m)} className="text-red-400 hover:text-red-300">
                                             <MdDelete className="w-4 h-4" />
@@ -132,7 +132,7 @@ const NewGroupModal = ({ onClose }) => {
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="w-full bg-accent hover:bg-opacity-90 text-white font-medium py-2 rounded transition-colors disabled:opacity-50"
+                        className="w-full bg-[#0c4da2] hover:bg-opacity-90 text-white font-medium py-2 rounded transition-colors disabled:opacity-50"
                     >
                         {loading ? 'Creating Group...' : 'Create Group'}
                     </button>

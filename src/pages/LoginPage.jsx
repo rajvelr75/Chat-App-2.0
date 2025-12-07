@@ -16,8 +16,8 @@ const LoginPage = () => {
         setError('');
         setLoading(true);
         try {
-            const userCredential = await loginUser(email, password);
-            await requestNotificationPermission(userCredential.user.uid);
+            const user = await loginUser(email, password);
+            await requestNotificationPermission(user.uid);
             navigate('/');
         } catch (err) {
             setError('Failed to login. Please check your credentials.');
