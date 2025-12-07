@@ -3,12 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { MdMoreVert, MdArrowBack, MdDeleteSweep } from 'react-icons/md';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { useAuth } from '../context/AuthContext';
+import { clearChatForUser } from '../services/chatService';
 import Avatar from './Avatar';
+import ConfirmationModal from './ConfirmationModal';
 import { useStreakWarning } from '../hooks/useStreakWarning';
+import { formatLastSeen } from '../utils/dateUtils';
 
 const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat, onGroupInfoClick, onUserInfoClick }) => {
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
     const [showMenu, setShowMenu] = useState(false);
+    const [showClearModal, setShowClearModal] = useState(false);
     const [otherUser, setOtherUser] = useState(initialOtherUser);
     const showStreakWarning = useStreakWarning(chat);
 
@@ -39,8 +45,7 @@ const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat, onGroupInf
         if (otherUser?.isOnline) {
             status = 'Online';
         } else if (otherUser?.lastSeen) {
-            const date = otherUser.lastSeen.toDate();
-            status = `Last seen at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            status = `Last seen ${formatLastSeen(otherUser.lastSeen)}`;
         } else {
             status = 'Offline';
         }
@@ -114,12 +119,32 @@ const ChatHeader = ({ chat, otherUser: initialOtherUser, onClearChat, onGroupInf
                             {isGroup ? 'Group Info' : 'Contact Info'}
                         </button>
                         <button
-                            onClick={() => { onClearChat(); setShowMenu(false); }}
+                            onClick={() => { setShowClearModal(true); setShowMenu(false); }}
                             className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-400 flex items-center gap-2"
                         >
                             <MdDeleteSweep className="w-5 h-5" /> Clear Chat
                         </button>
                     </div>
+                )}
+
+                {showClearModal && (
+                    <ConfirmationModal
+                        title="Clear Chat?"
+                        message="This will clear the chat history for you. Messages will remain for other participants."
+                        onClose={() => setShowClearModal(false)}
+                        options={[
+                            {
+                                label: "Clear Chat",
+                                variant: 'danger',
+                                onClick: async () => {
+                                    setShowClearModal(false);
+                                    if (currentUser) {
+                                        await clearChatForUser(chat.id, currentUser.uid);
+                                    }
+                                }
+                            }
+                        ]}
+                    />
                 )}
             </div>
         </div>

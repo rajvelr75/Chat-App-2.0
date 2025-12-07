@@ -245,6 +245,7 @@ export const sendMessage = async (chatId, senderId, text, attachment = null, rep
         const chatDocSnap = await getDoc(chatDocRef);
         let updates = {
             lastMessage: lastMsgText,
+            lastMessageSenderId: senderId,
             lastMessageAt: serverTimestamp()
         };
 
@@ -345,12 +346,63 @@ export const getMessages = (chatId, userId, callback) => {
             };
         }));
 
+
         callback(messages);
     });
 };
 
+export const deleteMessageForMe = async (chatId, messageId, userId) => {
+    const messageRef = doc(db, "chats", chatId, "messages", messageId);
+    await updateDoc(messageRef, {
+        deletedFor: arrayUnion(userId)
+    });
+};
+
+export const clearChatForUser = async (chatId, userId) => {
+    const chatRef = doc(db, "chats", chatId);
+    await updateDoc(chatRef, {
+        [`clearedAt.${userId}`]: serverTimestamp()
+    });
+};
+
 export const deleteMessage = async (chatId, messageId) => {
+    // 1. Delete the message
     await deleteDoc(doc(db, "chats", chatId, "messages", messageId));
+
+    // 2. Fetch the NEW last message
+    const messagesRef = collection(db, "chats", chatId, "messages");
+    const q = query(messagesRef, orderBy("createdAt", "desc"), limit(5));
+    const snapshot = await getDocs(q);
+
+    const chatRef = doc(db, "chats", chatId);
+
+    // Filter out the deleted message ID if it persists in the query result
+    const validDocs = snapshot.docs.filter(d => d.id !== messageId);
+
+    if (validDocs.length > 0) {
+        // We have a previous message
+        const lastMsgDoc = validDocs[0].data();
+
+        // Determine text to show
+        let lastMsgText = "Message";
+        if (lastMsgDoc.text) lastMsgText = lastMsgDoc.text;
+        else if (lastMsgDoc.type === 'image' || lastMsgDoc.imageUrl) lastMsgText = "📷 Photo";
+        else if (lastMsgDoc.type === 'video' || lastMsgDoc.videoUrl) lastMsgText = "🎥 Video";
+        else if (lastMsgDoc.ciphertext) lastMsgText = "🔒 Encrypted message";
+
+        await updateDoc(chatRef, {
+            lastMessage: lastMsgText,
+            lastMessageAt: lastMsgDoc.createdAt,
+            lastMessageSenderId: lastMsgDoc.senderId
+        });
+    } else {
+        // Chat is empty
+        await updateDoc(chatRef, {
+            lastMessage: "",
+            lastMessageAt: serverTimestamp(),
+            lastMessageSenderId: null
+        });
+    }
 };
 
 export const markMessageDelivered = async (chatId, messageId, userId) => {
@@ -560,6 +612,7 @@ export const sendMediaMessage = async (chatId, senderId, metadata) => {
     const lastMsgText = metadata.type === 'image' ? "📷 Photo" : "🎥 Video";
     await updateDoc(doc(db, "chats", chatId), {
         lastMessage: lastMsgText,
+        lastMessageSenderId: senderId,
         lastMessageAt: serverTimestamp()
     });
 };

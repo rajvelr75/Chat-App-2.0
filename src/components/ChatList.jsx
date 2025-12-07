@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserChats } from '../services/chatService';
+import { getUserChats, markMessageDelivered } from '../services/chatService';
 import ChatListItem from './ChatListItem';
+import { db } from '../services/firebase';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 
 const ChatList = ({ searchTerm }) => {
     const { currentUser } = useAuth();
@@ -67,6 +69,35 @@ const ChatList = ({ searchTerm }) => {
             setEnrichedChats([]);
             setLoading(false);
         }
+    }, [chats, currentUser]);
+
+    // 3. Mark incoming messages as Delivered
+    useEffect(() => {
+        if (!currentUser?.uid || chats.length === 0) return;
+
+        chats.forEach(async (chat) => {
+            // Only check if LAST message was from someone else
+            if (chat.lastMessageSenderId && chat.lastMessageSenderId !== currentUser.uid) {
+                try {
+                    // Check latest message
+                    const messagesRef = collection(db, "chats", chat.id, "messages");
+                    const q = query(messagesRef, orderBy("createdAt", "desc"), limit(1));
+                    const snap = await getDocs(q);
+
+                    if (!snap.empty) {
+                        const msgDoc = snap.docs[0];
+                        const msgData = msgDoc.data();
+
+                        // If I haven't marked it as delivered yet
+                        if (!msgData.deliveredTo?.includes(currentUser.uid)) {
+                            await markMessageDelivered(chat.id, msgDoc.id, currentUser.uid);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error marking delivered in background", err);
+                }
+            }
+        });
     }, [chats, currentUser]);
 
     const handleSelectChat = (chatId) => {

@@ -47,3 +47,35 @@ export const checkSameDay = (timestamp1, timestamp2) => {
 export const getDayString = (date) => {
     return date.toISOString().split('T')[0];
 };
+
+export const formatLastSeen = (timestamp) => {
+    if (!timestamp) return 'Offline';
+
+    const date = timestamp.toDate();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (messageDate.getTime() === today.getTime()) {
+        return `today at ${timeString}`;
+    }
+
+    if (messageDate.getTime() === yesterday.getTime()) {
+        return `yesterday at ${timeString}`;
+    }
+
+    const diffTime = Math.abs(today - messageDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 7) {
+        const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(date);
+        return `on ${weekday} at ${timeString}`;
+    }
+
+    const fullDate = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+    return `on ${fullDate} at ${timeString}`;
+};

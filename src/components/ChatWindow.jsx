@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import {
   getChatDetails,
   sendMessage,
@@ -8,6 +10,7 @@ import {
   getUserProfile,
   clearChat,
   deleteMessage,
+  deleteMessageForMe, // Add this import
   markMessageDelivered,
   markMessageRead
 } from '../services/chatService';
@@ -31,39 +34,59 @@ const ChatWindow = () => {
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showUserInfo, setShowUserInfo] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null); // For sidebar profile view
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    const fetchChatData = async () => {
-      setLoading(true);
-      const chatData = await getChatDetails(chatId);
-      setChat(chatData);
-      setShowGroupInfo(false); // Reset when chat changes
-      setShowUserInfo(false);
+    // Real-time chat details listener
+    const chatDocRef = doc(db, "chats", chatId);
+    const unsubChat = onSnapshot(chatDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const chatData = { id: docSnap.id, ...docSnap.data() };
 
-      if (chatData) {
-        if (chatData.isGroup) {
-          // Fetch all members for group chat
-          const membersData = {};
-          for (const uid of chatData.members) {
-            const user = await getUserProfile(uid);
-            membersData[uid] = user;
+        // Only update if data changed meaningfully to avoid excess re-renders
+        setChat(prev => {
+          // If deep compare needed, we can do it, but for now simple check
+          if (JSON.stringify(prev) !== JSON.stringify(chatData)) {
+            return chatData;
           }
-          setGroupMembers(membersData);
+          return prev;
+        });
+
+        setLoading(false);
+
+        if (chatData.isGroup) {
+          // Fetch members if needed
+          // (Can optiimize to only fetch if members array changed)
+          const fetchMembers = async () => {
+            const membersData = {};
+            // Optimization: check against existing members?
+            for (const uid of chatData.members) {
+              // Cache check or just fetch? 
+              // For now keep it simple but maybe check groupMembers
+              // if (!groupMembers[uid]) ...
+              const user = await getUserProfile(uid);
+              membersData[uid] = user;
+            }
+            setGroupMembers(membersData);
+          };
+          fetchMembers();
         } else {
-          // Fetch other user for 1-on-1
           const otherUserId = chatData.members.find(id => id !== currentUser?.uid);
           if (otherUserId) {
-            const user = await getUserProfile(otherUserId);
-            setOtherUser(user);
+            getUserProfile(otherUserId).then(user => setOtherUser(user));
           }
         }
+      } else {
+        setChat(null);
+        setLoading(false);
       }
-      setLoading(false);
-    };
+    });
 
-    fetchChatData();
+    return () => unsubChat();
+  }, [chatId, currentUser?.uid]);
 
+  useEffect(() => {
     const unsubscribe = getMessages(chatId, currentUser?.uid, (msgs) => {
       setMessages(msgs);
 
@@ -111,9 +134,14 @@ const ChatWindow = () => {
     }
   };
 
-  const handleDeleteMessage = async (messageId) => {
-    if (window.confirm("Delete this message?")) {
+  const handleDeleteMessage = async (messageId, type = 'me') => {
+    // Confirmation handled by Modal in MessageBubble
+    if (type === 'everyone') {
       await deleteMessage(chatId, messageId);
+    } else {
+      if (currentUser?.uid) {
+        await deleteMessageForMe(chatId, messageId, currentUser.uid);
+      }
     }
   };
 
@@ -121,7 +149,7 @@ const ChatWindow = () => {
   if (!chat) return <div className="flex-1 flex items-center justify-center bg-chat-bg text-gray-400">Chat not found</div>;
 
   return (
-    <div className="flex flex-col h-full bg-transparent relative">
+    <div className="flex flex-col h-full bg-transparent relative w-full overflow-hidden">
       <ChatHeader
         chat={chat}
         otherUser={otherUser}
@@ -136,12 +164,51 @@ const ChatWindow = () => {
         }}
       />
 
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-        {messages.map((msg, index) => {
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar min-h-0 w-full">
+
+        {messages.filter(msg => {
+          // Client-side filtering for immediate feedback
+          if (msg.deletedFor && msg.deletedFor.includes(currentUser?.uid)) return false;
+
+          if (chat?.clearedAt && currentUser?.uid) {
+            const clearedTime = chat.clearedAt[currentUser.uid];
+            // console.log("Msg:", msg.id, "CreatedAt:", msg.createdAt, "ClearedAt:", clearedTime);
+
+            if (clearedTime && msg.createdAt) {
+              let msgTime = 0;
+              let clearTime = 0;
+
+              try {
+                if (typeof msg.createdAt.toMillis === 'function') {
+                  msgTime = msg.createdAt.toMillis();
+                } else if (msg.createdAt instanceof Date) {
+                  msgTime = msg.createdAt.getTime();
+                } else if (msg.createdAt.seconds) {
+                  msgTime = msg.createdAt.seconds * 1000;
+                }
+
+                if (typeof clearedTime.toMillis === 'function') {
+                  clearTime = clearedTime.toMillis();
+                } else if (clearedTime instanceof Date) {
+                  clearTime = clearedTime.getTime();
+                } else if (clearedTime.seconds) {
+                  clearTime = clearedTime.seconds * 1000;
+                }
+
+                if (msgTime > 0 && clearTime > 0) {
+                  if (msgTime <= clearTime) return false;
+                }
+              } catch (e) {
+                console.error("Error comparing timestamps", e);
+              }
+            }
+          }
+          return true;
+        }).map((msg, index, filteredMessages) => {
           const sender = chat.isGroup ? groupMembers[msg.senderId] : otherUser;
 
           // Date Separator Logic
-          const prevMsg = index > 0 ? messages[index - 1] : null;
+          const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
           const showDateSeparator = !prevMsg || !checkSameDay(prevMsg.createdAt, msg.createdAt);
           const dateLabel = showDateSeparator ? formatDateForSeparator(msg.createdAt) : null;
 
@@ -160,6 +227,10 @@ const ChatWindow = () => {
                 sender={msg.senderId === currentUser?.uid ? currentUser : sender}
                 onDelete={handleDeleteMessage}
                 onReply={setReplyingTo}
+                onUserClick={(user) => {
+                  setSelectedUser(user);
+                  setShowUserInfo(true);
+                }}
                 chatId={chatId}
               />
             </div>
@@ -191,11 +262,14 @@ const ChatWindow = () => {
       )}
 
       {/* User Info Drawer */}
-      {showUserInfo && otherUser && (
+      {showUserInfo && (selectedUser || otherUser) && (
         <div className="absolute top-0 right-0 h-full z-30 shadow-2xl animate-fade-in-left">
           <UserDetailsPage
-            uid={otherUser.uid}
-            onClose={() => setShowUserInfo(false)}
+            uid={selectedUser?.uid || otherUser?.uid}
+            onClose={() => {
+              setShowUserInfo(false);
+              setSelectedUser(null);
+            }}
           />
         </div>
       )}

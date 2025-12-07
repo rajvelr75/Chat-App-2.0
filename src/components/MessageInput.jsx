@@ -215,7 +215,9 @@ const MessageInput = ({ chatId, onSendMessage, replyingTo, onCancelReply }) => {
                     <div className="flex-1 overflow-hidden">
                         <p className="text-xs font-bold text-[#0C4DA2] mb-0.5">Replying to {replyingTo.senderName || 'User'}</p>
                         <p className="text-xs text-gray-600 truncate">
-                            {replyingTo.text || (replyingTo.type === 'image' ? '📷 Photo' : '🎥 Video')}
+                            {replyingTo.text
+                                ? (replyingTo.text.length > 50 ? replyingTo.text.substring(0, 50) + '...' : replyingTo.text)
+                                : (replyingTo.type === 'image' ? '📷 Photo' : '🎥 Video')}
                         </p>
                     </div>
                     <button

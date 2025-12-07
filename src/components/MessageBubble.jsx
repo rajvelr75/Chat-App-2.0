@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { MdExpandMore, MdDelete, MdClose, MdReply, MdCheck, MdDoneAll } from 'react-icons/md';
-import { deleteMessage, downloadChunks } from '../services/chatService';
+import { deleteMessage, deleteMessageForMe, downloadChunks } from '../services/chatService';
 import { getChatKey } from '../services/cryptoService';
 import { decryptArrayBuffer, combineChunks } from '../services/mediaCryptoService';
 import Avatar from './Avatar';
+import ConfirmationModal from './ConfirmationModal';
 
-const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) => {
+const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply, onUserClick }) => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const isOwn = message.senderId === currentUser?.uid;
@@ -16,6 +17,8 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
     const [decrypting, setDecrypting] = useState(false);
     const [error, setError] = useState(false);
     const [showLightbox, setShowLightbox] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [visibleLimit, setVisibleLimit] = useState(500); // Character limit for text
 
     useEffect(() => {
         let active = true;
@@ -59,6 +62,7 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
             }
         };
 
+
         if (message.type === 'image' || message.type === 'video' || message.imageUrl || message.videoUrl) {
             loadMedia();
         }
@@ -78,19 +82,38 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
     };
 
     const handleAvatarClick = () => {
-        if (sender?.uid) {
+        if (sender?.uid && onUserClick) {
+            onUserClick(sender);
+        } else if (sender?.uid) {
             navigate(`/user/${sender.uid}`);
         }
     };
 
-    const handleDelete = async () => {
-        if (window.confirm("Delete this message?")) {
-            if (onDelete) {
-                onDelete(message.id);
+    const handleDeleteClick = () => {
+        setShowMenu(false);
+        setShowDeleteModal(true);
+    };
+
+    const handleConfirmDelete = async (type) => { // 'me' or 'everyone'
+        setShowDeleteModal(false);
+        try {
+            if (type === 'everyone') {
+                if (onDelete) {
+                    onDelete(message.id, 'everyone');
+                } else if (chatId) {
+                    await deleteMessage(chatId, message.id);
+                }
             } else {
-                if (chatId) await deleteMessage(chatId, message.id);
+                // Delete for me
+                if (onDelete) {
+                    onDelete(message.id, 'me');
+                } else if (chatId && currentUser?.uid) {
+                    await deleteMessageForMe(chatId, message.id, currentUser.uid);
+                }
             }
-            setShowMenu(false);
+        } catch (err) {
+            console.error("Error deleting message:", err);
+            alert("Failed to delete message");
         }
     };
 
@@ -104,32 +127,26 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
     };
 
     const renderTicks = (msg) => {
-        if (!msg.status || msg.status === 'sent') {
-            return <MdCheck className="w-3.5 h-3.5 text-gray-400" />;
-        }
-
         // Check for read
         const isRead = msg.readBy && msg.readBy.length > 0;
-        // For 1:1, if readBy has anyone (implied other user), it's read.
-        // For group, we might want more complex logic, but "blue ticks" if read by someone is OK for now
-        // OR better: if readBy includes all other members? User asked for WhatsApp style.
-        // Simplified: Blue if read by at least one person (or specific logic for 1:1)
-
         if (isRead) {
             return <MdDoneAll className="w-3.5 h-3.5 text-blue-500" />;
         }
 
-        // Delivered
-        return <MdDoneAll className="w-3.5 h-3.5 text-gray-400" />;
+        // Check for delivered
+        const isDelivered = (msg.deliveredTo && msg.deliveredTo.length > 0) || msg.status === 'delivered';
+        if (isDelivered) {
+            return <MdDoneAll className="w-3.5 h-3.5 text-gray-400" />;
+        }
+
+        // Default: Sent
+        return <MdCheck className="w-3.5 h-3.5 text-gray-400" />;
     };
 
     const getReadStatusTitle = (msg) => {
         if (msg.readAt) {
-            // If 1:1, usually just one key.
             const entries = Object.entries(msg.readAt);
             if (entries.length > 0) {
-                // Format first one? Or list?
-                // "Seen at HH:MM"
                 const first = entries[0][1];
                 if (first && first.toDate) {
                     return `Seen at ${formatTime(first)}`;
@@ -156,18 +173,22 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
                     </div>
                 )}
 
-                <div className={`relative max-w-[70%] rounded-2xl p-3 shadow-glass backdrop-blur-md border border-white/10 ${isOwn
+                <div className={`relative max-w-[70%] rounded-2xl p-3 shadow-glass backdrop-blur-md border border-white/10 overflow-hidden ${isOwn
                     ? 'bg-[rgba(0,194,255,0.15)] rounded-br-none'
                     : 'bg-gray-200 rounded-bl-none'
                     }`}>
 
                     {/* Sender Name in Group */}
-                    {isGroup && !isOwn && (
+                    {/* Sender Name in Group */}
+                    {isGroup && !isOwn && sender && (
                         <p
-                            className="text-xs font-bold text-accent mb-1 cursor-pointer hover:underline"
-                            onClick={handleAvatarClick}
+                            className="text-xs font-bold text-[#0C4DA2] mb-1 cursor-pointer hover:underline"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleAvatarClick();
+                            }}
                         >
-                            {sender?.displayName || 'Unknown'}
+                            {sender.displayName || sender.name || 'Unknown User'}
                         </p>
                     )}
 
@@ -175,7 +196,11 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
                     {message.replyTo && (
                         <div className="mb-2 p-2 rounded-lg bg-black/5 border-l-4 border-accent/50 text-xs">
                             <p className="font-bold text-accent mb-0.5">{message.replyTo.senderName}</p>
-                            <p className="opacity-70 truncate">{message.replyTo.text}</p>
+                            <p className="opacity-70 truncate">
+                                {message.replyTo.text && message.replyTo.text.length > 100
+                                    ? message.replyTo.text.substring(0, 100) + '...'
+                                    : message.replyTo.text}
+                            </p>
                         </div>
                     )}
 
@@ -214,9 +239,28 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
 
                     {/* Text */}
                     {message.text && (
-                        <p className="text-sm text-text-primary whitespace-pre-wrap break-words leading-relaxed">
-                            {message.text}
-                        </p>
+                        <div className="text-sm text-text-primary whitespace-pre-wrap break-all leading-relaxed min-w-0">
+                            {message.text.length > visibleLimit ? (
+                                <>
+                                    {message.text.substring(0, visibleLimit)}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setVisibleLimit(prev => prev + 3000);
+                                        }}
+                                        className="text-accent font-bold cursor-pointer ml-1 hover:underline focus:outline-none active:opacity-70 inline-block"
+                                    >
+                                        ... Show More
+                                    </button>
+                                </>
+                            ) : (
+                                message.text
+                            )}
+                            {/* "Show Less" option if expanded beyond original limit? 
+                                Not implementing for now, user asked for "Show More" functionality 
+                            */}
+                        </div>
                     )}
 
                     {/* Metadata */}
@@ -255,7 +299,7 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
                     {showMenu && (
                         <div className="absolute top-6 right-2 glass-panel shadow-lg rounded py-1 z-10 min-w-[120px]">
                             <button
-                                onClick={handleDelete}
+                                onClick={handleDeleteClick}
                                 className="w-full text-left px-3 py-2 hover:bg-glass text-red-400 text-sm flex items-center gap-2"
                             >
                                 <MdDelete className="w-4 h-4" /> Delete
@@ -270,7 +314,11 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
                         <Avatar
                             user={currentUser}
                             size="w-8 h-8"
-                            onClick={() => navigate('/profile')}
+                            onClick={() => {
+                                // For own avatar, maybe show own profile or nothing?
+                                // navigate('/profile'); 
+                                if (onUserClick) onUserClick(currentUser);
+                            }}
                         />
                     </div>
                 )}
@@ -295,6 +343,26 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply }) 
                         onClick={(e) => e.stopPropagation()}
                     />
                 </div>
+            )}
+
+            {showDeleteModal && (
+                <ConfirmationModal
+                    title="Delete Message?"
+                    message={`Are you sure you want to delete this message? ${isOwn ? '"Delete for everyone" will remove it for all participants.' : 'It will be removed from your chat view.'}`}
+                    onClose={() => setShowDeleteModal(false)}
+                    options={[
+                        ...(isOwn ? [{
+                            label: "Delete for everyone",
+                            variant: 'danger',
+                            onClick: () => handleConfirmDelete('everyone')
+                        }] : []),
+                        {
+                            label: "Delete for me",
+                            variant: 'primary',
+                            onClick: () => handleConfirmDelete('me')
+                        }
+                    ]}
+                />
             )}
         </>
     );

@@ -43,8 +43,34 @@ const ChatListItem = ({ chat, currentUser, onSelect, isSelected, preFetchedOther
 
     const displayName = displayUser?.displayName || 'Loading...';
 
+    // Check if cleared
+    let showLastMessage = true;
+    if (chat.clearedAt && currentUser && chat.clearedAt[currentUser.uid] && chat.lastMessageAt) {
+        const clearedTime = chat.clearedAt[currentUser.uid];
+        const lastMsgTime = chat.lastMessageAt;
+
+        try {
+            let msgTimeVal = 0;
+            let clearTimeVal = 0;
+
+            if (typeof lastMsgTime.toMillis === 'function') msgTimeVal = lastMsgTime.toMillis();
+            else if (lastMsgTime instanceof Date) msgTimeVal = lastMsgTime.getTime();
+            else if (lastMsgTime.seconds) msgTimeVal = lastMsgTime.seconds * 1000;
+
+            if (typeof clearedTime.toMillis === 'function') clearTimeVal = clearedTime.toMillis();
+            else if (clearedTime instanceof Date) clearTimeVal = clearedTime.getTime();
+            else if (clearedTime.seconds) clearTimeVal = clearedTime.seconds * 1000;
+
+            if (msgTimeVal > 0 && clearTimeVal > 0 && msgTimeVal <= clearTimeVal) {
+                showLastMessage = false;
+            }
+        } catch (e) {
+            console.error("Error comparing timestamps in ChatListItem", e);
+        }
+    }
+
     // Truncate last message
-    const lastMessagePreview = chat.lastMessage
+    const lastMessagePreview = (showLastMessage && chat.lastMessage)
         ? (chat.lastMessage.length > 30 ? chat.lastMessage.substring(0, 30) + '...' : chat.lastMessage)
         : '';
 
@@ -75,7 +101,7 @@ const ChatListItem = ({ chat, currentUser, onSelect, isSelected, preFetchedOther
                         )}
                     </div>
                     <span className={`text-xs flex-shrink-0 ml-2 ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
-                        {lastMessageTime}
+                        {showLastMessage ? lastMessageTime : ''}
                     </span>
                 </div>
                 <p className={`text-sm truncate ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
