@@ -3,11 +3,11 @@ importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-comp
 
 // Config must match src/services/firebase.js
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY", // User must replace or we can try to inject if we knew it, but here we provide template as we can't read .env in SW easily without build step
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDL8Fq72B4MQ62j7p7pHY52GsQU_FyKmi4", // User must replace or we can try to inject if we knew it, but here we provide template as we can't read .env in SW easily without build step
+    authDomain: "chat-app-8f8e9.firebaseapp.com",
+    projectId: "chat-app-8f8e9",
+    messagingSenderId: "719395112705",
+    appId: "1:719395112705:web:1e674aeaf9126639267d00"
 };
 
 // Initialize Firebase
@@ -21,7 +21,7 @@ messaging.onBackgroundMessage((payload) => {
     const notificationTitle = payload.notification.title;
     const notificationOptions = {
         body: payload.notification.body,
-        icon: '/logo.png', // Assuming logo exists
+        icon: '/chat.ico',
         data: payload.data
     };
 
