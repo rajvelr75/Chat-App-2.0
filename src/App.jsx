@@ -27,40 +27,44 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+import { NotificationProvider } from './context/NotificationContext';
+
 function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
         <Router>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <ChatLayout />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/user/:uid"
-              element={
-                <ProtectedRoute>
-                  <UserDetailsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/group/:groupId"
-              element={
-                <ProtectedRoute>
-                  <GroupDetailsPage />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+          <NotificationProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <ChatLayout />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/user/:uid"
+                element={
+                  <ProtectedRoute>
+                    <UserDetailsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/group/:groupId"
+                element={
+                  <ProtectedRoute>
+                    <GroupDetailsPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </NotificationProvider>
         </Router>
       </ThemeProvider>
     </AuthProvider>
