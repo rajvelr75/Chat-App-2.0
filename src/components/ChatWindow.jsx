@@ -12,7 +12,8 @@ import {
   deleteMessage,
   deleteMessageForMe, // Add this import
   markMessageDelivered,
-  markMessageRead
+  markMessageRead,
+  resetUnreadCount
 } from '../services/chatService';
 
 import ChatHeader from './ChatHeader';
@@ -101,6 +102,13 @@ const ChatWindow = () => {
     });
 
     return () => unsubscribe();
+  }, [chatId, currentUser?.uid]);
+
+  // Reset Unread Count
+  useEffect(() => {
+    if (chatId && currentUser?.uid) {
+      resetUnreadCount(chatId, currentUser.uid);
+    }
   }, [chatId, currentUser?.uid]);
 
   // Mark as Read when user sees messages
@@ -232,6 +240,8 @@ const ChatWindow = () => {
                   setShowUserInfo(true);
                 }}
                 chatId={chatId}
+                groupMembers={groupMembers}
+                otherUser={otherUser}
               />
             </div>
           );

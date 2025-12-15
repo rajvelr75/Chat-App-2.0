@@ -14,7 +14,8 @@ import {
     deleteDoc,
     writeBatch,
     arrayUnion,
-    arrayRemove
+    arrayRemove,
+    increment
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { generateChatKey, encryptMessage, decryptMessage, wrapKeyForUser, unwrapKeyForUser } from "./cryptoService";
@@ -314,6 +315,17 @@ export const sendMessage = async (chatId, senderId, text, attachment = null, rep
             updates.lastMessageTimestamps = timestamps;
         }
 
+        // Increment unread counts for all other members
+        if (chatDocSnap.exists()) {
+            const chatData = chatDocSnap.data();
+            const members = chatData.members || [];
+            members.forEach(memberId => {
+                if (memberId !== senderId) {
+                    updates[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+        }
+
         await updateDoc(chatDocRef, updates);
     } catch (err) {
         throw err;
@@ -418,6 +430,13 @@ export const markMessageRead = async (chatId, messageId, userId) => {
     await updateDoc(messageRef, {
         readBy: arrayUnion(userId),
         [`readAt.${userId}`]: serverTimestamp()
+    });
+};
+
+export const resetUnreadCount = async (chatId, userId) => {
+    const chatRef = doc(db, "chats", chatId);
+    await updateDoc(chatRef, {
+        [`unreadCounts.${userId}`]: 0
     });
 };
 
@@ -581,8 +600,8 @@ export const sendMediaMessage = async (chatId, senderId, metadata) => {
         type: metadata.type, // 'image' or 'video'
         encrypted: true,
         mimeType: metadata.mimeType,
-        mediaIv: metadata.mediaIv || metadata.iv, // New field for media IV
-        iv: metadata.textIv || metadata.iv, // Use text IV if available, else fallback (though fallback might be wrong context)
+        mediaIv: metadata.mediaIv || metadata.iv || null, // New field for media IV
+        iv: metadata.textIv || metadata.iv || null, // Use text IV if available, else fallback
         chunkCount: metadata.chunkCount,
         ciphertext: metadata.textCiphertext || null, // Stores encrypted caption
         createdAt: serverTimestamp(),

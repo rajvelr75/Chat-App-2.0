@@ -104,9 +104,16 @@ const ChatListItem = ({ chat, currentUser, onSelect, isSelected, preFetchedOther
                         {showLastMessage ? lastMessageTime : ''}
                     </span>
                 </div>
-                <p className={`text-sm truncate ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {lastMessagePreview}
-                </p>
+                <div className="flex justify-between items-center">
+                    <p className={`text-sm truncate pr-2 ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>
+                        {lastMessagePreview}
+                    </p>
+                    {chat.unreadCounts?.[currentUser?.uid] > 0 && (
+                        <div className="bg-[#0C4DA2] text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] flex items-center justify-center">
+                            {chat.unreadCounts[currentUser.uid]}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

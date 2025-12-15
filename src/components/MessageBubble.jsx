@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MdExpandMore, MdDelete, MdClose, MdReply, MdCheck, MdDoneAll } from 'react-icons/md';
+import { MdExpandMore, MdDelete, MdClose, MdReply, MdCheck, MdDoneAll, MdInfo } from 'react-icons/md';
 import { deleteMessage, deleteMessageForMe, downloadChunks } from '../services/chatService';
 import { getChatKey } from '../services/cryptoService';
 import { decryptArrayBuffer, combineChunks } from '../services/mediaCryptoService';
 import Avatar from './Avatar';
 import ConfirmationModal from './ConfirmationModal';
+import MessageInfo from './MessageInfo';
 
-const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply, onUserClick }) => {
+const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply, onUserClick, groupMembers, otherUser }) => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const isOwn = message.senderId === currentUser?.uid;
@@ -18,6 +19,7 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply, on
     const [error, setError] = useState(false);
     const [showLightbox, setShowLightbox] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showInfoModal, setShowInfoModal] = useState(false);
     const [visibleLimit, setVisibleLimit] = useState(500); // Character limit for text
 
     useEffect(() => {
@@ -160,6 +162,7 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply, on
         <>
             <div
                 className={`flex mb-4 ${isOwn ? 'justify-end' : 'justify-start'} group relative items-end`}
+                style={{ zIndex: showMenu ? 50 : 'auto' }}
                 onMouseLeave={() => setShowMenu(false)}
             >
                 {/* Avatar for received messages */}
@@ -173,7 +176,7 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply, on
                     </div>
                 )}
 
-                <div className={`relative max-w-[70%] rounded-2xl p-3 shadow-glass backdrop-blur-md border border-white/10 overflow-hidden ${isOwn
+                <div className={`relative max-w-[70%] rounded-2xl p-3 shadow-glass backdrop-blur-md border border-white/10 ${isOwn
                     ? 'bg-[rgba(0,194,255,0.15)] rounded-br-none'
                     : 'bg-gray-200 rounded-bl-none'
                     }`}>
@@ -297,10 +300,16 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply, on
 
                     {/* Dropdown Menu */}
                     {showMenu && (
-                        <div className="absolute top-6 right-2 glass-panel shadow-lg rounded py-1 z-10 min-w-[120px]">
+                        <div className="absolute top-8 right-0 bg-white shadow-2xl rounded-xl py-1.5 z-20 min-w-[140px] border border-gray-100 animate-scale-in origin-top-right overflow-hidden">
+                            <button
+                                onClick={() => { setShowMenu(false); setShowInfoModal(true); }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-gray-700 text-sm flex items-center gap-3 transition-colors font-medium border-b border-gray-50"
+                            >
+                                <MdInfo className="w-4 h-4 text-[#0C4DA2]" /> Message Info
+                            </button>
                             <button
                                 onClick={handleDeleteClick}
-                                className="w-full text-left px-3 py-2 hover:bg-glass text-red-400 text-sm flex items-center gap-2"
+                                className="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-500 text-sm flex items-center gap-3 transition-colors font-medium"
                             >
                                 <MdDelete className="w-4 h-4" /> Delete
                             </button>
@@ -362,6 +371,16 @@ const MessageBubble = ({ message, isGroup, sender, onDelete, chatId, onReply, on
                             onClick: () => handleConfirmDelete('me')
                         }
                     ]}
+                />
+            )}
+
+            {showInfoModal && (
+                <MessageInfo
+                    message={message}
+                    isGroup={isGroup}
+                    groupMembers={groupMembers}
+                    otherUser={otherUser}
+                    onClose={() => setShowInfoModal(false)}
                 />
             )}
         </>
